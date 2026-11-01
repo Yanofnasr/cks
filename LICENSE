@@ -1,0 +1,26 @@
+CKS practice uses the following licenses:
+
+1. Learning material: CC BY 4.0
+
+   Markdown documents in the repository root, preparation/, labs/ and
+   solutions/, including their inline teaching examples, are licensed under
+   Creative Commons Attribution 4.0 International.
+
+   See licenses/CC-BY-4.0.txt and
+   https://creativecommons.org/licenses/by/4.0/ .
+
+   Credit this workbook and its contributors when reusing this material.
+   Retain the scoped upstream attribution in ACKNOWLEDGEMENTS.md when reusing
+   the adapted CS01, SH04 or CAP01 portions, and identify modifications.
+
+2. Original fixtures, reference manifests and validation code: MIT
+
+   Non-Markdown files under labs/fixtures/ and solutions/, files under
+   scripts/, tests/ and .github/workflows/, and .gitignore are licensed under
+   the MIT License in licenses/MIT.txt.
+
+   This includes deliberately insecure or synthetic training fixtures;
+   their license does not make them suitable for production deployment.
+
+Third-party license texts and notices retain their own terms. Links to
+external projects do not relicense their content or imply endorsement.

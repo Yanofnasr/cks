@@ -1,0 +1,10 @@
+# Learner manifests, kubeconfig, keys, build output and evidence.
+/work/
+
+# Local credentials.
+/.aws/
+/.kube/
+
+# Local Python check output.
+__pycache__/
+*.pyc

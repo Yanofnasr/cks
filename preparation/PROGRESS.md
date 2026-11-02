@@ -6,6 +6,7 @@ Record a result only after completing the drill's proof. `pass` requires the int
 
 | Domain | First pass | Independent retry | Next weak skill |
 |---|---|---|---|
+| CS01-CS05, cluster setup | Not measured | Not measured | |
 
 ## Attempt log
 
@@ -17,4 +18,4 @@ Use `pass`, `retry`, `blocked by environment`, or `not measured`. Keep missing t
 
 ## Next session
 
-Prepare the [shared starting state](LAB-SAFETY.md).
+Prepare the [shared starting state](LAB-SAFETY.md). Choose an available exercise from the [study path](STUDY-PATH.md), then record its observed result and recovery.

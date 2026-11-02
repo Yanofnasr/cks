@@ -1,0 +1,76 @@
+# SPDX-License-Identifier: MIT
+# DNS assumption: CoreDNS Pods labeled k8s-app=kube-dns in kube-system.
+# Inspect and adapt for NodeLocal DNS or another resolver before applying.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cs01-deny-all
+  namespace: cks-lab
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cs01-dns
+  namespace: cks-lab
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cs01-client-egress
+  namespace: cks-lab
+spec:
+  podSelector:
+    matchLabels:
+      role: client
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: api
+    ports:
+    - protocol: TCP
+      port: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cs01-api-ingress
+  namespace: cks-lab
+spec:
+  podSelector:
+    matchLabels:
+      app: api
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          role: client
+    ports:
+    - protocol: TCP
+      port: 8080

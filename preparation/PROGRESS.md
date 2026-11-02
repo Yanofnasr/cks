@@ -7,6 +7,7 @@ Record a result only after completing the drill's proof. `pass` requires the int
 | Domain | First pass | Independent retry | Next weak skill |
 |---|---|---|---|
 | CS01-CS05, cluster setup | Not measured | Not measured | |
+| CH01-CH05, cluster hardening | Not measured | Not measured | |
 
 ## Attempt log
 

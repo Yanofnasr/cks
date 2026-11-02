@@ -17,6 +17,19 @@ Read [Cluster setup](../labs/cluster-setup.md).
 | CS05 | Verify exact platform binary identity | Local files and trusted release metadata |
 
 
+## Cluster hardening, 15%
+
+Read [Cluster hardening](../labs/cluster-hardening.md).
+
+| ID | Practice | Environment |
+|---|---|---|
+| CH01 | RBAC scope, client certificates and CSRs | Cluster with administrator access |
+| CH02 | ServiceAccount permissions, mounting and projected tokens | Cluster |
+| CH03 | API authentication, authorization, admission and TLS | kubeadm VM with recovery access |
+| CH04 | Kubelet authentication and authorization | Disposable worker VM |
+| CH05 | One-minor-version upgrade with drain and recovery | Snapshot of older kubeadm VM pair |
+
+
 ## Practice rhythm
 
 Work through the available drills, record positive and negative checks, and verify cleanup. Repeat weak skills from a fresh starting state. Keep a local copy of [Progress](PROGRESS.md) under `work/` and consult the [worked references](../solutions/README.md) after attempting a task.

@@ -38,3 +38,26 @@ Why it works:
 - Policies are additive; a separate broad allow can undo the intended restriction.
 
 Clean up with `kubectl delete -f solutions/network-policy.yaml`, then repeat the initial unrestricted checks. Do not delete other policies.
+
+## CH02: ServiceAccount authority and token mounting
+
+[serviceaccount.yaml](serviceaccount.yaml) contains a ServiceAccount, a narrow Role, its RoleBinding and a Pod that relies on the ServiceAccount's automount default. The Role allows only `get` and `list` on Pods in `cks-lab`.
+
+If CH02 left a Pod named `ch02-client`, delete only that owned Pod and wait for it to terminate before applying this reference:
+
+```bash
+kubectl -n cks-lab delete pod ch02-client --ignore-not-found --wait=true
+kubectl apply -f solutions/serviceaccount.yaml
+kubectl -n cks-lab wait --for=condition=Ready pod/ch02-client --timeout=120s
+kubectl auth can-i list pods -n cks-lab --as=system:serviceaccount:cks-lab:ch02-client
+kubectl auth can-i get secrets -n cks-lab --as=system:serviceaccount:cks-lab:ch02-client
+kubectl auth can-i create pods -n cks-lab --as=system:serviceaccount:cks-lab:ch02-client
+kubectl auth can-i list pods -n cks-other --as=system:serviceaccount:cks-lab:ch02-client
+kubectl -n cks-lab exec ch02-client -- test ! -e /var/run/secrets/kubernetes.io/serviceaccount/token
+```
+
+Expect `yes`, `no`, `no`, `no`, then a successful absence check. Inspect the running Pod's volume/mount specification too. Permissions do not require mounting a token; a Pod-level `automountServiceAccountToken: true` could override the ServiceAccount default, and an explicit projected token is a separate choice.
+
+Administrator impersonation tests authorization, not possession of credentials. CH01's client-certificate exercise verifies authentication separately. CH02's extension demonstrates why permission to create Pods can expose namespace Secrets even without direct Secret-read permission; do it only with dummy data and scoped temporary grants.
+
+Clean up with `kubectl delete -f solutions/serviceaccount.yaml`, plus any separately named extension resources created during the drill.

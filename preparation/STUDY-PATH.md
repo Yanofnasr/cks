@@ -43,6 +43,19 @@ Read [System hardening](../labs/system-hardening.md).
 | SH05 | Restrict a private host listener to the intended client source | Disposable Linux VM, nftables and two controlled clients |
 
 
+## Minimize microservice vulnerabilities, 20%
+
+Read [Workload security](../labs/workload-security.md).
+
+| ID | Practice | Environment |
+|---|---|---|
+| MW01 | Pod Security Admission, valid/invalid Pods and namespace scope | Cluster |
+| MW02 | Non-root, capabilities, escalation and writable paths | Cluster |
+| MW03 | Secrets, encryption at rest, rewrite and key rotation | Cluster; kubeadm/etcd access for encryption |
+| MW04 | Actual sandboxed workload using RuntimeClass | Node with compatible sandbox runtime |
+| MW05 | mTLS and encryption with real allowed/denied traffic | Cluster with a working mesh |
+
+
 ## Practice rhythm
 
 Work through the available drills, record positive and negative checks, and verify cleanup. Repeat weak skills from a fresh starting state. Keep a local copy of [Progress](PROGRESS.md) under `work/` and consult the [worked references](../solutions/README.md) after attempting a task.

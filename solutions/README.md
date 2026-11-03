@@ -61,3 +61,36 @@ Expect `yes`, `no`, `no`, `no`, then a successful absence check. Inspect the run
 Administrator impersonation tests authorization, not possession of credentials. CH01's client-certificate exercise verifies authentication separately. CH02's extension demonstrates why permission to create Pods can expose namespace Secrets even without direct Secret-read permission; do it only with dummy data and scoped temporary grants.
 
 Clean up with `kubectl delete -f solutions/serviceaccount.yaml`, plus any separately named extension resources created during the drill.
+
+## MW02: Harden a working workload
+
+[workload.yaml](workload.yaml) preserves the starter's HTTP server while setting non-root UID/GID 1000, `fsGroup`, disabled privilege escalation, dropped capabilities, RuntimeDefault seccomp, no automatic API token and a read-only root filesystem. The `/tmp` emptyDir is the deliberate writable exception.
+
+```bash
+kubectl -n cks-lab delete pod demo --ignore-not-found --wait=true
+kubectl apply -f solutions/workload.yaml
+kubectl -n cks-lab wait --for=condition=Ready pod/demo --timeout=120s
+kubectl -n cks-lab exec demo -- id
+kubectl -n cks-lab exec demo -- grep -E 'CapEff|NoNewPrivs' /proc/1/status
+kubectl -n cks-lab exec demo -- sh -c 'printf ok > /tmp/allowed.txt; cat /tmp/allowed.txt'
+kubectl -n cks-lab exec demo -- test ! -e /var/run/secrets/kubernetes.io/serviceaccount/token
+```
+
+The UID/GID should be 1000, effective capabilities zero and `NoNewPrivs` one. Verify the root mount is read-only by inspecting `/proc/mounts`, then confirm a root-filesystem write is rejected. An ordinary file-permission denial alone is not proof of a read-only mount.
+
+Capture the running Pod IP and fetch its page from the healthy client. For an IPv6 address, use brackets in the HTTP URL:
+
+```bash
+DEMO_IP=$(kubectl -n cks-lab get pod demo -o jsonpath='{.status.podIP}')
+kubectl -n cks-lab exec client -- wget -qO- -T 3 "http://$DEMO_IP:8080/"
+```
+
+The command above is the IPv4 form. Confirm the app remains healthy after the negative probes. The writable volume does not make the root writable, and root immutability does not make that volume immutable. RT03 explores the separate data-volume controls.
+
+Clean up with `kubectl -n cks-lab delete pod demo`. Keep a copy in `work/` if continuing to RT03.
+
+## MW05: Mesh encryption
+
+[istio-strict.yaml](istio-strict.yaml) restricts peer authentication to `app=api` in `cks-lab`. Use it only after MW05's injection, CNI, proxy-readiness and permissive-baseline checks. A running application container does not prove its traffic is intercepted by a healthy proxy.
+
+Apply the file, retain the successful meshed-client request, and verify the healthy plain client is rejected. Check proxy configuration/telemetry for mutual TLS on the accepted connection. Remove only this policy with `kubectl delete -f solutions/istio-strict.yaml`, then complete MW05's injection cleanup.

@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: MIT
+# Worked reference for MW05. Requires a functioning sidecar-mode Istio mesh.
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: mw05-api-strict
+  namespace: cks-lab
+spec:
+  selector:
+    matchLabels:
+      app: api
+  mtls:
+    mode: STRICT

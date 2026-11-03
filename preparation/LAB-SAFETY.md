@@ -67,7 +67,10 @@ All four should succeed initially. The clients sleep for 24 hours; recreate the 
 |---|---|
 | [workloads.yaml](../labs/fixtures/workloads.yaml) | Small, restricted-compatible network witnesses |
 | [workload.yaml](../labs/fixtures/workload.yaml) | Deliberately unhardened `demo` Pod for MW02/RT03; copy before editing |
+| [seccomp-deny-chmod.json](../labs/fixtures/seccomp-deny-chmod.json) | SH04 demonstration, permits other syscalls and rejects the chmod family |
+| [apparmor-deny-write](../labs/fixtures/apparmor-deny-write) | SH03 demonstration, permits other operations and denies writing `/tmp/blocked.txt` |
 
+The AppArmor and seccomp demonstrations isolate one behavior; they are not general production profiles. No profile becomes effective until it is installed on the selected node and a workload actually uses it.
 
 
 ## Reset and recovery

@@ -8,6 +8,7 @@ Record a result only after completing the drill's proof. `pass` requires the int
 |---|---|---|---|
 | CS01-CS05, cluster setup | Not measured | Not measured | |
 | CH01-CH05, cluster hardening | Not measured | Not measured | |
+| SH01-SH05, system hardening | Not measured | Not measured | |
 
 ## Attempt log
 

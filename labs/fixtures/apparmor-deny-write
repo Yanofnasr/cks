@@ -1,0 +1,9 @@
+# Training contrast only, not a general-purpose confinement profile.
+#include <tunables/global>
+profile cks-deny-write flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+  file,
+  network,
+  capability,
+  audit deny /tmp/blocked.txt w,
+}

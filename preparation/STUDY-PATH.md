@@ -30,6 +30,19 @@ Read [Cluster hardening](../labs/cluster-hardening.md).
 | CH05 | One-minor-version upgrade with drain and recovery | Snapshot of older kubeadm VM pair |
 
 
+## System hardening, 10%
+
+Read [System hardening](../labs/system-hardening.md).
+
+| ID | Practice | Environment |
+|---|---|---|
+| SH01 | Attribute and remove a task-owned listener/service | Disposable Linux VM |
+| SH02 | Least-privilege users, groups and filesystem access | Disposable Linux VM |
+| SH03 | AppArmor profile, node placement and enforced denial | AppArmor-enabled node |
+| SH04 | seccomp profile with working and denied operations | Linux node and compatible runtime |
+| SH05 | Restrict a private host listener to the intended client source | Disposable Linux VM, nftables and two controlled clients |
+
+
 ## Practice rhythm
 
 Work through the available drills, record positive and negative checks, and verify cleanup. Repeat weak skills from a fresh starting state. Keep a local copy of [Progress](PROGRESS.md) under `work/` and consult the [worked references](../solutions/README.md) after attempting a task.

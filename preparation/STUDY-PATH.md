@@ -56,6 +56,17 @@ Read [Workload security](../labs/workload-security.md).
 | MW05 | mTLS and encryption with real allowed/denied traffic | Cluster with a working mesh |
 
 
+## Supply chain security, 20%
+
+Read [Supply chain](../labs/supply-chain.md).
+
+| ID | Practice | Environment |
+|---|---|---|
+| SC01 | Smaller, non-root images that still serve the app | Local container builder/runtime |
+| SC02 | Scan and compare real findings | Trivy and available vulnerability database |
+| SC03 | Bind desired and running image identities to a digest | Cluster and registry access |
+
+
 ## Practice rhythm
 
 Work through the available drills, record positive and negative checks, and verify cleanup. Repeat weak skills from a fresh starting state. Keep a local copy of [Progress](PROGRESS.md) under `work/` and consult the [worked references](../solutions/README.md) after attempting a task.

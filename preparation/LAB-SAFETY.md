@@ -67,6 +67,7 @@ All four should succeed initially. The clients sleep for 24 hours; recreate the 
 |---|---|
 | [workloads.yaml](../labs/fixtures/workloads.yaml) | Small, restricted-compatible network witnesses |
 | [workload.yaml](../labs/fixtures/workload.yaml) | Deliberately unhardened `demo` Pod for MW02/RT03; copy before editing |
+| [image/Dockerfile](../labs/fixtures/image/Dockerfile) | Deliberately root-running HTTP image for SC01 |
 | [seccomp-deny-chmod.json](../labs/fixtures/seccomp-deny-chmod.json) | SH04 demonstration, permits other syscalls and rejects the chmod family |
 | [apparmor-deny-write](../labs/fixtures/apparmor-deny-write) | SH03 demonstration, permits other operations and denies writing `/tmp/blocked.txt` |
 

@@ -35,7 +35,7 @@ Populate the kubeconfig before running these commands. Confirm its endpoint and 
 
 ## Shared starting state
 
-The fixtures own **`cks-lab` and `cks-other`**. If either namespace already contains unrelated work, use a fresh cluster.
+The fixtures own **`cks-lab` and `cks-other`**. If either namespace already contains unrelated work, use a fresh cluster. The only cluster-scoped fixture objects beyond these namespaces are the explicitly applied `cks-allowed-registries` policy and binding.
 
 ```bash
 kubectl apply -f labs/fixtures/workloads.yaml
@@ -70,6 +70,7 @@ All four should succeed initially. The clients sleep for 24 hours; recreate the 
 | [image/Dockerfile](../labs/fixtures/image/Dockerfile) | Deliberately root-running HTTP image for SC01 |
 | [seccomp-deny-chmod.json](../labs/fixtures/seccomp-deny-chmod.json) | SH04 demonstration, permits other syscalls and rejects the chmod family |
 | [apparmor-deny-write](../labs/fixtures/apparmor-deny-write) | SH03 demonstration, permits other operations and denies writing `/tmp/blocked.txt` |
+| [registry-policy.yaml](../labs/fixtures/registry-policy.yaml) | SC06 allowlist, applies only to namespaces labeled `cks-practice=admission` |
 
 The AppArmor and seccomp demonstrations isolate one behavior; they are not general production profiles. No profile becomes effective until it is installed on the selected node and a workload actually uses it.
 
@@ -79,6 +80,7 @@ The AppArmor and seccomp demonstrations isolate one behavior; they are not gener
 For a fresh namespaced attempt, finish each drill's separately named cluster/node cleanup, then remove only the resources owned here. This deletes your practice objects and edits in the two namespaces:
 
 ```bash
+kubectl delete -f labs/fixtures/registry-policy.yaml --ignore-not-found
 kubectl delete namespace cks-lab cks-other --ignore-not-found --wait=true
 kubectl apply -f labs/fixtures/workloads.yaml
 kubectl wait -n cks-lab --for=condition=Ready pod --all --timeout=120s

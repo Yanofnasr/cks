@@ -6,7 +6,7 @@ Learning material is CC BY 4.0; original fixtures and validation code are MIT. S
 
 Start with [Lab setup](preparation/LAB-SAFETY.md) on disposable infrastructure. Copy the [progress template](preparation/PROGRESS.md) into ignored `work/` for local results. Keep credentials and generated files there.
 
-Available: **23 focused drills**.
+Available: **27 focused drills**.
 
 Follow the [study path](preparation/STUDY-PATH.md). Each drill states prerequisites, a task, positive and negative proof, and scoped cleanup.
 

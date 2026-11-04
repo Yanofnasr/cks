@@ -44,3 +44,79 @@ trivy image --severity HIGH,CRITICAL --format json \
 **Prove it:** the declared image uses the recorded digest, the Pod is Ready, and the running image identity matches the expected artifact for that node. An image-index digest, platform-manifest digest and local image/config ID are different identifiers; explain the relationship instead of comparing unrelated strings. In a separate probe, use a nonexistent digest and verify that it cannot start. A typo causing ImagePullBackOff is not a completed secure deployment.
 
 **Reset:** delete only the two probe Pods. Keep the real resolved digest for SC04 and SC05.
+
+## SC04 Signatures
+
+**Environment:** a compatible Cosign installation and a private lab registry where you are authorized to push images and signatures. Use dummy artifacts and an explicitly chosen transparency-log policy. Signing can contact a transparency service and publish signature metadata; use the current tool documentation before choosing an offline or private-log mode.
+
+**Start:** push the SC01 image to the owned registry, resolve its digest, and create a lab-only signing key pair under `work/`. Keep the private key and password out of Git. Set `SIGNED_IMAGE` to the fully qualified digest reference you actually pushed.
+
+**Task:** sign that digest with the lab key and verify it using only the expected public key:
+
+```bash
+cosign verify --key work/cks-signing.pub "$SIGNED_IMAGE"
+```
+
+Use the real public-key filename you generated. For a keyless variation, bind verification to both the expected signing identity and OIDC issuer. A valid signature from an arbitrary identity is not the requested publisher policy.
+
+**Prove it:** the expected key/identity accepts the intended digest; an unrelated public key fails; an unsigned different digest fails. Record the digest and verifier identity constraints. Changing a tag must not silently change which artifact you trust. Manual verification does not itself stop Kubernetes from admitting another image.
+
+**Reset:** remove only the lab tags/signatures through the owned registry's supported interface if they are no longer needed. Remove private key material when finished; retain non-secret evidence of the policy tested.
+
+Reference: [Cosign verification](https://docs.sigstore.dev/cosign/verifying/verify/).
+
+## SC05 SBOMs
+
+**Environment:** Trivy or another real SBOM generator. Reuse the digest from SC03; set `IMAGE` to that actual image reference.
+
+```bash
+trivy image --format spdx-json --output work/sbom.spdx.json "$IMAGE"
+trivy image --format cyclonedx --output work/sbom.cdx.json "$IMAGE"
+```
+
+**Task:** identify the artifact described, its packages/components, versions and available license information. Select one component and trace it to the image layer or dependency that introduced it. Compare the SBOM with the scanner report from SC02 and explain the difference between an inventory and a vulnerability result.
+
+**Prove it:** the files are valid documents in the claimed formats and contain actual component data for the selected image. Generate an SBOM for a second, different image and show that its identity and inventory are distinguishable. A file containing a format header, or an empty fallback after a failed tool invocation, is not evidence of a generated SBOM. State any missing package or license information rather than inventing it.
+
+**Reset:** retain only the reports and comparison notes you need in `work/`; no cluster resources are required for this drill.
+
+References: [BOM CLI](https://kubernetes-sigs.github.io/bom/cli-reference/), [Trivy SBOM documentation](https://trivy.dev/docs/latest/supply-chain/sbom/).
+
+## SC06 Admission policies
+
+**Environment:** a disposable Kubernetes cluster with the stable ValidatingAdmissionPolicy API available. Start with a fresh shared baseline so another exercise's policy cannot explain a rejection. Confirm that the `cks-allowed-registries` policy and binding names are available for this drill.
+
+**Start:** inspect [registry-policy.yaml](fixtures/registry-policy.yaml). It contains a policy and binding for Pods in namespaces labelled `cks-practice=admission`; only explicitly qualified `docker.io/` and `registry.k8s.io/` image references are allowed. Regular, init and ephemeral containers are considered.
+
+```bash
+kubectl apply -f labs/fixtures/registry-policy.yaml
+kubectl label namespace cks-lab cks-practice=admission --overwrite
+```
+
+**Task:** explain the CEL expressions, the binding's scope and the difference between `failurePolicy: Fail` and the binding's `Deny` action. Prepare uniquely named compliant Pod manifests with one image field changed at a time. Use an `example.invalid/lab/image:v1` reference as the prohibited input; server-side dry runs need not pull it.
+
+**Prove it:**
+
+1. A compliant Pod using an allowed explicit registry is accepted.
+2. An unapproved regular-container image is rejected with this policy's message.
+3. An unapproved init-container image is rejected even when the main image is allowed.
+4. An ephemeral-container update using an unapproved image is rejected. Test the actual subresource update against a drill-owned running Pod; a CREATE-only test does not cover it.
+5. An otherwise valid unapproved-image Pod in unlabelled `cks-other` passes server-side dry run. Do not deploy or pull that image.
+
+For all probes, distinguish an admission-policy rejection from malformed YAML, PSA rejection, authorization failure or an existing Pod name. This registry policy does not verify signatures, image contents or ownership of every image in an allowed registry.
+
+**Extension:** on a cluster with a real image-verification webhook, separately test allowed, unsigned/wrong-identity and unavailable-backend outcomes. Confirm the configured fail-open/fail-closed behavior. Do not create fake webhook CRDs or replace the API-server manifest to simulate this extension.
+
+**Reset:** remove the `cks-practice` label you added and delete only the `cks-allowed-registries` binding and policy. Delete the drill's probe Pods. Do not delete all admission policies.
+
+## SC07 Build provenance
+
+**Environment:** the local Git checkout, SC01 build outputs and a JSON/text editor. A real attestation-verification extension also needs an artifact with published provenance and a trusted verifier already installed.
+
+**Start:** record the current commit, the hash of the actual Dockerfile used, its base digest, the build command, and the resulting image identity in `work/build-record.txt`. Note explicitly if the build context differs from the committed starter. This handwritten trace is not a signed attestation.
+
+**Task:** trace source, resolved dependencies, builder, artifact, test result, signature and publication as separate handoffs. Identify which values are immutable and who could replace each mutable tag or output. For a proposed CI flow, state which job may build, which may sign and which may publish; untrusted contributions must not receive publishing/signing authority.
+
+**Prove it:** build a changed copy of the page and demonstrate that its artifact identity differs, so the original digest/signature does not identify it. Explain why a successful build, repository name, or signing-workflow filename alone does not prove every provenance claim. Where an actual attestation is available, verify the subject digest, expected repository/workflow identity and expected release ref/commit; reject a wrong subject or wrong trusted identity. Without that artifact, record the attestation part as not measured.
+
+**Reset:** remove only the alternate lab image/tag. Keep the non-secret handoff notes and genuine verification output. Never replace a missing attestation with a locally fabricated success file.

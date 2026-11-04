@@ -65,6 +65,10 @@ Read [Supply chain](../labs/supply-chain.md).
 | SC01 | Smaller, non-root images that still serve the app | Local container builder/runtime |
 | SC02 | Scan and compare real findings | Trivy and available vulnerability database |
 | SC03 | Bind desired and running image identities to a digest | Cluster and registry access |
+| SC04 | Signature verification and rejected wrong identity/key | Cosign and an owned test registry |
+| SC05 | Generate and inspect a real SBOM | Trivy, BOM or Syft |
+| SC06 | Registry admission across regular, init and ephemeral containers | Cluster with ValidatingAdmissionPolicy |
+| SC07 | Trace source, build identity, digest and provenance | Public artifact and its attestation |
 
 
 ## Practice rhythm

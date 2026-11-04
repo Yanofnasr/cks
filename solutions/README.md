@@ -89,6 +89,24 @@ The command above is the IPv4 form. Confirm the app remains healthy after the ne
 
 Clean up with `kubectl -n cks-lab delete pod demo`. Keep a copy in `work/` if continuing to RT03.
 
+## SC06: Registry admission
+
+The [registry policy](../labs/fixtures/registry-policy.yaml) is already a reference implementation. Its binding selects only namespaces labeled `cks-practice=admission`; its three checks cover ordinary, init and ephemeral containers. `failurePolicy: Fail` concerns evaluation errors, while `Deny` makes validation failures reject requests.
+
+Use a fresh baseline. Start with a valid Pod based on the hardened reference, give it a unique name, and change only the field being tested. Use `kubectl create --dry-run=server -f work/probe.yaml` for create probes:
+
+| Probe | Expected result |
+|---|---|
+| Explicit allowed registry, labeled namespace | Accepted |
+| `example.invalid/lab/image:v1` in ordinary container | Rejected with the ordinary-container policy message |
+| Same prohibited registry in init container, allowed main container | Rejected with the init-container policy message |
+| Prohibited ephemeral-container image in an actual subresource update | Rejected with the ephemeral-container policy message |
+| Otherwise valid prohibited-registry Pod in unlabelled `cks-other` | Accepted by dry run; do not create/pull it |
+
+For the update case, retrieve a drill-owned Pod, prepare a valid ephemeral-container update, and submit it to that Pod's `ephemeralcontainers` subresource with server-side dry run. A CREATE-only test does not exercise UPDATE coverage. Distinguish the named policy's response from authorization, PSA or schema failures. Check the policy's status/type-checking warnings before interpreting results.
+
+Follow SC06's cleanup to remove only its label, policy, binding and probes. Registry prefixes do not prove signatures, publishers or vulnerability status; SC04 verifies those separate trust properties.
+
 ## MW05: Mesh encryption
 
 [istio-strict.yaml](istio-strict.yaml) restricts peer authentication to `app=api` in `cks-lab`. Use it only after MW05's injection, CNI, proxy-readiness and permissive-baseline checks. A running application container does not prove its traffic is intercepted by a healthy proxy.

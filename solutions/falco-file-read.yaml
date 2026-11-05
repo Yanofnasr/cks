@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: MIT
+# Worked reference for RT01. Validate against the installed Falco engine.
+- rule: CKS practice file read
+  desc: Detect a successful read-open of the owned training file by cat in a container.
+  condition: >-
+    evt.type in (open, openat, openat2) and
+    evt.is_open_read = true and
+    evt.failed = false and
+    container.id != host and
+    proc.name = cat and
+    fd.name = /tmp/cks-runtime-probe
+  output: >-
+    CKS probe opened for reading
+    (time=%evt.time container_id=%container.id process=%proc.name
+    command=%proc.cmdline user=%user.uid file=%fd.name)
+  priority: NOTICE
+  source: syscall
+  tags: [cks, training]

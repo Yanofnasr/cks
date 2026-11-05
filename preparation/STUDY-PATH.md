@@ -72,6 +72,16 @@ Read [Supply chain](../labs/supply-chain.md).
 | SC08 | Find and fix workload/Dockerfile misconfigurations | Trivy; builder/runtime and cluster for full proof; KubeLinter optional |
 
 
+## Monitoring, logging and runtime security, 20%
+
+Read [Runtime security](../labs/runtime-security.md).
+
+| ID | Practice | Environment |
+|---|---|---|
+| RT01 | Falco rules, real events and syscall attribution | Falco-equipped disposable node |
+| RT02 | Audit policy ordering, mounts and event investigation | Local JSONL; kubeadm VM for live auditing |
+
+
 ## Practice rhythm
 
 Work through the available drills, record positive and negative checks, and verify cleanup. Repeat weak skills from a fresh starting state. Keep a local copy of [Progress](PROGRESS.md) under `work/` and consult the [worked references](../solutions/README.md) after attempting a task.

@@ -112,3 +112,9 @@ Follow SC06's cleanup to remove only its label, policy, binding and probes. Regi
 [istio-strict.yaml](istio-strict.yaml) restricts peer authentication to `app=api` in `cks-lab`. Use it only after MW05's injection, CNI, proxy-readiness and permissive-baseline checks. A running application container does not prove its traffic is intercepted by a healthy proxy.
 
 Apply the file, retain the successful meshed-client request, and verify the healthy plain client is rejected. Check proxy configuration/telemetry for mutual TLS on the accepted connection. Remove only this policy with `kubectl delete -f solutions/istio-strict.yaml`, then complete MW05's injection cleanup.
+
+## RT01: Runtime detection
+
+[falco-file-read.yaml](falco-file-read.yaml) is a scoped example for the owned probe file. Follow RT01 to validate it with the installed Falco version and load it through the actual installation's custom-rule mechanism.
+
+Capture a matching read of `/tmp/cks-runtime-probe` and a nonmatching read of `/tmp/cks-ordinary`. Confirm event collection is healthy, and correlate the event's container/process identity with the actual workload. A syntactically accepted rule and a quiet log alone do not prove detection. Remove only the named practice rule afterward.

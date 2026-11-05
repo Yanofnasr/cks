@@ -71,6 +71,8 @@ All four should succeed initially. The clients sleep for 24 hours; recreate the 
 | [seccomp-deny-chmod.json](../labs/fixtures/seccomp-deny-chmod.json) | SH04 demonstration, permits other syscalls and rejects the chmod family |
 | [apparmor-deny-write](../labs/fixtures/apparmor-deny-write) | SH03 demonstration, permits other operations and denies writing `/tmp/blocked.txt` |
 | [registry-policy.yaml](../labs/fixtures/registry-policy.yaml) | SC06 allowlist, applies only to namespaces labeled `cks-practice=admission` |
+| [audit-policy.yaml](../labs/fixtures/audit-policy.yaml) | RT02 Metadata policy that avoids request/response Secret bodies |
+| [audit-events.jsonl](../labs/fixtures/audit-events.jsonl) | Four synthetic events for local investigation, never evidence of a real incident |
 
 The AppArmor and seccomp demonstrations isolate one behavior; they are not general production profiles. No profile becomes effective until it is installed on the selected node and a workload actually uses it.
 

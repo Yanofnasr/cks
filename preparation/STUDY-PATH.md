@@ -69,6 +69,7 @@ Read [Supply chain](../labs/supply-chain.md).
 | SC05 | Generate and inspect a real SBOM | Trivy, BOM or Syft |
 | SC06 | Registry admission across regular, init and ephemeral containers | Cluster with ValidatingAdmissionPolicy |
 | SC07 | Trace source, build identity, digest and provenance | Public artifact and its attestation |
+| SC08 | Find and fix workload/Dockerfile misconfigurations | Trivy; builder/runtime and cluster for full proof; KubeLinter optional |
 
 
 ## Practice rhythm

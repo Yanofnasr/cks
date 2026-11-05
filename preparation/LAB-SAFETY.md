@@ -74,6 +74,7 @@ All four should succeed initially. The clients sleep for 24 hours; recreate the 
 
 The AppArmor and seccomp demonstrations isolate one behavior; they are not general production profiles. No profile becomes effective until it is installed on the selected node and a workload actually uses it.
 
+The [static-analysis directory](../labs/fixtures/static-analysis/README.md) contains deliberately flawed files for offline inspection only. Do not recursively apply or build the whole fixtures directory. Use only the specific manifest or build context named by a drill. Worked answers live separately under [solutions](../solutions/README.md).
 
 ## Reset and recovery
 

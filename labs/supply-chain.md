@@ -120,3 +120,37 @@ For all probes, distinguish an admission-policy rejection from malformed YAML, P
 **Prove it:** build a changed copy of the page and demonstrate that its artifact identity differs, so the original digest/signature does not identify it. Explain why a successful build, repository name, or signing-workflow filename alone does not prove every provenance claim. Where an actual attestation is available, verify the subject digest, expected repository/workflow identity and expected release ref/commit; reject a wrong subject or wrong trusted identity. Without that artifact, record the attestation part as not measured.
 
 **Reset:** remove only the alternate lab image/tag. Keep the non-secret handoff notes and genuine verification output. Never replace a missing attestation with a locally fabricated success file.
+
+## SC08 Static analysis
+
+**Environment:** the static-analysis stage needs an installed Trivy version with its misconfiguration checks available. It scans local files without a cluster or execution of the deliberately flawed inputs. Initial check-bundle retrieval may need network access. Full completion also requires a working image builder/runtime and a disposable cluster able to pull the repaired image, for the separate functional proof below. KubeLinter is an optional Kubernetes-only comparison, not a replacement for Dockerfile analysis. Record the tool version and the check configuration/bundle used, then keep them consistent for the comparison.
+
+**Start:** inspect the warnings in the [static-analysis fixtures](fixtures/static-analysis/README.md). Copy them into an isolated working directory. **Do not apply or build the original inputs.**
+
+```bash
+mkdir -p work/SC08/before work/SC08/after
+cp labs/fixtures/static-analysis/deployment.yaml labs/fixtures/static-analysis/Dockerfile work/SC08/before/
+cp work/SC08/before/deployment.yaml work/SC08/before/Dockerfile work/SC08/after/
+trivy --version > work/SC08/tool-version.txt
+trivy config --exit-code 1 --format json \
+  --output work/SC08/before.json work/SC08/before
+```
+
+A nonzero result is expected when checks find problems, but inspect the report and diagnostics: a failed download, parse error or missing tool is not a successful detection. Reports stay outside the scanned directories so they cannot become accidental build inputs.
+
+**Task:** explain the actual reported findings and the relevant source fields. Assess image identity, container user, privilege escalation, writable filesystem, token mounting, resources and build-context scope. Repair only the `after` copies while retaining an HTTP application on port 8080. Use a verified image digest; retain required writable paths explicitly. Copy [the sample page](fixtures/image/index.html) into the repaired image context and narrow `COPY` to that required file. Do not suppress a relevant rule simply to obtain a green report.
+
+Rerun the same check policy and inspect the before/after differences:
+
+```bash
+trivy config --exit-code 1 --format json \
+  --output work/SC08/after.json work/SC08/after
+```
+
+If the scanner or checks changed during the exercise, rerun both inputs with the same versions. Finding identifiers, counts and severities can change; the task is to explain and repair observed categories, not match a hardcoded count. As an optional Kubernetes-only comparison, run an installed KubeLinter against the repaired Deployment and explain any differences in its checks.
+
+**Prove it:** the deliberately flawed input still triggers relevant findings, and the repaired input satisfies the chosen checks without broad exclusions. Separately build and run only the repaired image using SC01's loopback-only probe, then validate the repaired Deployment on the disposable cluster. Ensure it references the repaired image available to that cluster, becomes Ready, and serves the page with the intended runtime restrictions. Static analysis, vulnerability scanning and runtime enforcement are different forms of evidence. If a builder/runtime or cluster is unavailable, record the static stage's result and the functional stage as not measured; do not mark the full drill passed.
+
+**Reset:** remove only the repaired `static-analysis-demo` Deployment and any specifically named probe container/image created for this drill. Preserve reports needed for comparison in `work/`. The scanner-only stage creates no cluster resources.
+
+References: [Trivy misconfiguration scanning](https://trivy.dev/docs/latest/scanner/misconfiguration/), [KubeLinter usage](https://github.com/stackrox/kube-linter/blob/main/README.md#using-kubelinter).

@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: MIT
+# SC08 scanner input only. Deliberately flawed: DO NOT APPLY unchanged.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: static-analysis-demo
+  namespace: cks-lab
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: static-analysis-demo
+  template:
+    metadata:
+      labels:
+        app: static-analysis-demo
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - name: web
+          image: docker.io/library/busybox:latest
+          command:
+            - sh
+            - -c
+            - mkdir -p /tmp/www; printf 'training-only\n' > /tmp/www/index.html; exec httpd -f -p 8080 -h /tmp/www
+          ports:
+            - containerPort: 8080
+          securityContext:
+            runAsUser: 0
+            allowPrivilegeEscalation: true
+            readOnlyRootFilesystem: false

@@ -12,6 +12,7 @@ Record a result only after completing the drill's proof. `pass` requires the int
 | MW01-MW05, workload security | Not measured | Not measured | |
 | SC01-SC08, supply chain | Not measured | Not measured | |
 | RT01-RT04, runtime security | Not measured | Not measured | |
+| CAP01, capstone | Not measured | Not measured | |
 
 ## Attempt log
 
@@ -23,4 +24,6 @@ Use `pass`, `retry`, `blocked by environment`, or `not measured`. Keep missing t
 
 ## Next session
 
-Prepare the [shared starting state](LAB-SAFETY.md). Choose an available exercise from the [study path](STUDY-PATH.md), then record its observed result and recovery.
+1. Prepare the [shared starting state](LAB-SAFETY.md).
+2. Attempt CS01 network isolation, CH02 ServiceAccounts, then MW02 workload hardening.
+3. Record observed results and choose the next session from the weakest skill.

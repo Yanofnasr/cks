@@ -16,7 +16,6 @@ Read [Cluster setup](../labs/cluster-setup.md).
 | CS04 | Serve the intended hostname with a verifiable TLS certificate | Cluster with Ingress controller |
 | CS05 | Verify exact platform binary identity | Local files and trusted release metadata |
 
-
 ## Cluster hardening, 15%
 
 Read [Cluster hardening](../labs/cluster-hardening.md).
@@ -28,7 +27,6 @@ Read [Cluster hardening](../labs/cluster-hardening.md).
 | CH03 | API authentication, authorization, admission and TLS | kubeadm VM with recovery access |
 | CH04 | Kubelet authentication and authorization | Disposable worker VM |
 | CH05 | One-minor-version upgrade with drain and recovery | Snapshot of older kubeadm VM pair |
-
 
 ## System hardening, 10%
 
@@ -42,7 +40,6 @@ Read [System hardening](../labs/system-hardening.md).
 | SH04 | seccomp profile with working and denied operations | Linux node and compatible runtime |
 | SH05 | Restrict a private host listener to the intended client source | Disposable Linux VM, nftables and two controlled clients |
 
-
 ## Minimize microservice vulnerabilities, 20%
 
 Read [Workload security](../labs/workload-security.md).
@@ -54,7 +51,6 @@ Read [Workload security](../labs/workload-security.md).
 | MW03 | Secrets, encryption at rest, rewrite and key rotation | Cluster; kubeadm/etcd access for encryption |
 | MW04 | Actual sandboxed workload using RuntimeClass | Node with compatible sandbox runtime |
 | MW05 | mTLS and encryption with real allowed/denied traffic | Cluster with a working mesh |
-
 
 ## Supply chain security, 20%
 
@@ -71,7 +67,6 @@ Read [Supply chain](../labs/supply-chain.md).
 | SC07 | Trace source, build identity, digest and provenance | Public artifact and its attestation |
 | SC08 | Find and fix workload/Dockerfile misconfigurations | Trivy; builder/runtime and cluster for full proof; KubeLinter optional |
 
-
 ## Monitoring, logging and runtime security, 20%
 
 Read [Runtime security](../labs/runtime-security.md).
@@ -83,7 +78,12 @@ Read [Runtime security](../labs/runtime-security.md).
 | RT03 | Read-only root with required writable volumes | Cluster |
 | RT04 | Attribute, contain and verify a controlled incident | Disposable cluster or VM |
 
-
 ## Practice rhythm
 
-Work through the available drills, record positive and negative checks, and verify cleanup. Repeat weak skills from a fresh starting state. Keep a local copy of [Progress](PROGRESS.md) under `work/` and consult the [worked references](../solutions/README.md) after attempting a task.
+1. Start with CS01, CH02 and MW02 to establish networking, identity and workload fundamentals.
+2. Complete the remaining drills, grouping node work into one VM session and optional-tool work into another.
+3. Repeat each weak skill from a clean starting state, without looking at the previous solution. Change names, ports or identities on the second attempt.
+4. Attempt [CAP01](../labs/capstone.md) in 45 minutes. Complete every requirement and record evidence, rather than inventing an exam score.
+5. Build two-hour mixed sessions across the six domains. Use only currently permitted documentation and practice returning to the designated base/SSH host.
+
+Keep a local copy of [Progress](PROGRESS.md) under `work/`: elapsed time, positive check, negative check, recovery result and next retry. Two independent successful attempts are a useful study milestone, not a guarantee of passing. Consult the [worked references](../solutions/README.md) after an attempt, then repeat without them.

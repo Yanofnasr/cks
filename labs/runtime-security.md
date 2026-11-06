@@ -58,3 +58,46 @@ Create a drill-owned `audit-reader` ServiceAccount in `cks-lab`, with a Role/Rol
 **Reset:** remove only `audit-reader` and its Role/RoleBinding. Restore the control-plane snapshot, or carefully restore the saved manifest/policy and remove only the drill's mounts/files after API health is verified. Keep logs protected and remove them when the exercise's retention period ends.
 
 Reference: [Kubernetes auditing](https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/).
+
+## RT03 Runtime immutability
+
+**Environment:** ordinary disposable cluster. Start from your successful MW02 manifest, copy it to `work/immutable.yaml` and name the new Pod `immutable-demo`. The task's static page must remain available on port 8080.
+
+**Task:** serve the page from a read-only volume mounted at `/www`, backed by a drill-owned ConfigMap named `immutable-page` with `immutable: true`. Change the HTTP command to serve `/www` without rewriting its contents at startup. Keep `/tmp` as an explicitly writable temporary volume, the root filesystem read-only, and the other MW02 restrictions in place.
+
+**Prove it:**
+
+1. The Pod becomes Ready and returns the expected page to the healthy client.
+2. The runtime root mount is read-only, and a root-filesystem write fails.
+3. Changing `/www/index.html` from the container fails, while creating `/tmp/cks-proof` succeeds.
+4. An API attempt to change the immutable ConfigMap's data is rejected; an unrelated mutable ConfigMap in the same namespace still behaves normally.
+5. The page remains available after the probes and a Pod restart.
+
+Explain the separate controls: a read-only root filesystem does not make writable volumes immutable, and a read-only ConfigMap mount alone does not prevent an authorized API user from changing a mutable source ConfigMap. Keep the scope of each conclusion explicit.
+
+**Reset:** delete only `immutable-demo`, `immutable-page` and your mutable comparison ConfigMap. Do not delete shared application configuration or change unrelated namespace policies.
+
+## RT04 Incident response
+
+**Environment:** ordinary disposable cluster with an enforcing CNI. Use a fresh shared baseline with no earlier NetworkPolicies. This is a benign containment exercise, not a malware exercise.
+
+**Start:** copy the hardened workload manifest into `work/incident.yaml`. Name the Pod `incident-probe`, add the label `exercise: incident`, and replace its command with a harmless long-running process that writes a timestamp to `/tmp/cks-heartbeat` every few seconds. Remove the inherited HTTP readiness probe and container port because this process does not serve HTTP. Keep its writable `/tmp` volume and restricted security settings. Wait for it to run and confirm that the heartbeat advances.
+
+**Task:** identify the Pod UID, node, container identity, process and start time. Save the relevant events and a short heartbeat sample. Capture the healthy destination Pod's IP **before** quarantine and use it for the primary connection comparison:
+
+```bash
+API_IP=$(kubectl -n cks-lab get pod api -o jsonpath='{.status.podIP}')
+API_URL="http://$API_IP:8080/"
+kubectl -n cks-lab exec incident-probe -- wget -qO- -T 3 "$API_URL"
+kubectl -n cks-lab exec client -- wget -qO- -T 3 "$API_URL"
+```
+
+For an IPv6 Pod address, set `API_URL="http://[$API_IP]:8080/"` before the probes. Both direct-IP requests must succeed initially. Also record a successful DNS-based request before containment, but do not use name-resolution failure as proof that the destination connection was blocked.
+
+Create a NetworkPolicy named `incident-quarantine` in `cks-lab` selecting only `exercise: incident`, with both ingress and egress isolated and no allow rules. Inspect all policies selecting that Pod: NetworkPolicies are additive, so another allow can defeat the intended quarantine.
+
+**Prove it:** rerun the same two direct-IP commands using the captured `API_URL`. The still-running probe loses the connection while the unchanged healthy client retains it. Confirm the destination is still Ready at that IP; if it was recreated with a different IP, repeat the baseline comparison before drawing a conclusion. Verify the failed request ran the working utility in the intended Pod, and check that its heartbeat still advances. DNS is intentionally blocked by this all-egress quarantine too, but that separate effect is not the evidence for direct-IP containment. Record what quarantine does not prevent, such as the process using its local filesystem.
+
+Identify which controller, if any, owns the probe before removing it; deleting a managed Pod may cause immediate replacement. Remove only this drill's Pod or owning workload after preserving the observations, then verify that the expected process/workload is gone and the healthy application remains available.
+
+**Reset:** delete only `incident-quarantine` and any remaining owned probe resource. Never delete an executable obtained from an arbitrary `/proc/PID/exe` path, kill an unknown port owner, or remove unrelated binaries as a cleanup method.

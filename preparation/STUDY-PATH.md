@@ -80,6 +80,8 @@ Read [Runtime security](../labs/runtime-security.md).
 |---|---|---|
 | RT01 | Falco rules, real events and syscall attribution | Falco-equipped disposable node |
 | RT02 | Audit policy ordering, mounts and event investigation | Local JSONL; kubeadm VM for live auditing |
+| RT03 | Read-only root with required writable volumes | Cluster |
+| RT04 | Attribute, contain and verify a controlled incident | Disposable cluster or VM |
 
 
 ## Practice rhythm

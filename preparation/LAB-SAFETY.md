@@ -13,7 +13,7 @@ Use a disposable cluster you own. The namespace fixtures below are enough to sta
 
 A manifest or CRD alone does not establish a working controller. Check the named prerequisite before starting. Use current official installation instructions for the chosen Kubernetes/runtime combination. Keep AppArmor enabled on nodes used for its drill.
 
-Command examples assume a Linux shell with standard GNU utilities; node commands require the stated disposable Linux VM. On macOS or Windows, use a suitable Linux VM/terminal or adapt local-only commands such as `sha256sum` deliberately. Each build, scanner, mesh, firewall and kernel drill names its additional tools.
+Command examples assume a Linux shell with standard GNU utilities; node commands require the stated disposable Linux VM. On macOS or Windows, use a suitable Linux VM/terminal or adapt local-only commands such as `sha256sum` deliberately. Python 3.11+ is needed only for repository checks. Each build, scanner, mesh, firewall and kernel drill names its additional tools.
 
 Pods use the cluster-provided DNS search configuration. The examples use names such as `api.cks-lab.svc`, avoiding a fixed cluster-domain suffix. Inspect the client's `/etc/resolv.conf` and use the actual full domain if its DNS policy/search configuration differs. Keep namespaces, label selectors, CNI enforcement, IP family and image architecture consistent with the task.
 

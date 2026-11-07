@@ -21,3 +21,14 @@ Follow the [study path](preparation/STUDY-PATH.md). Each drill states prerequisi
 | Mixed practice | [45-minute capstone](labs/capstone.md) |
 
 Consult the [worked references](solutions/README.md) after an attempt. Runtime behavior must be measured in the stated environment; these exercises do not provision components or award automatic scores.
+
+## Repository checks
+
+Run with Python 3.11 or newer:
+
+```bash
+python3 scripts/check.py
+python3 -m unittest discover -s tests -v
+```
+
+The offline checks cover local documentation consistency and JSON fixtures. They do not validate YAML schemas, CEL, external URLs or live lab behavior. CI runs these checks with a read-only repository token.

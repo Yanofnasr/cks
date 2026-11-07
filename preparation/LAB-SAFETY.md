@@ -74,6 +74,7 @@ All four should succeed initially. The clients sleep for 24 hours; recreate the 
 | [audit-policy.yaml](../labs/fixtures/audit-policy.yaml) | RT02 Metadata policy that avoids request/response Secret bodies |
 | [audit-events.jsonl](../labs/fixtures/audit-events.jsonl) | Four synthetic events for local investigation, never evidence of a real incident |
 | [three-tier.yaml](../labs/fixtures/three-tier.yaml) | CS06 cross-namespace traffic witnesses, with scoped [policy reference](../solutions/three-tier-policy.yaml) |
+| [namespace-pair.yaml](../labs/fixtures/namespace-pair.yaml) | MW06 two-container network/PID/filesystem comparison |
 
 The AppArmor and seccomp demonstrations isolate one behavior; they are not general production profiles. No profile becomes effective until it is installed on the selected node and a workload actually uses it.
 

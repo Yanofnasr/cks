@@ -36,7 +36,7 @@ This map uses the [CNCF CKS 1.37 curriculum](https://github.com/cncf/curriculum/
 |---|---|---|
 | Pod security standards | MW01, MW02, CAP01 | Valid workload admitted; prohibited configuration rejected; app remains healthy |
 | Secret management | MW03 | Scoped access and actual encrypted storage survive staged key rotation |
-| Workload isolation | MW04, CS01, CS06, CAP01 | Selected sandbox actually runs; tenant/network boundaries behave as intended |
+| Workload isolation | MW04, MW06, CS01, CS06, CAP01 | Selected sandbox actually runs; tenant/network boundaries behave as intended |
 | Pod-to-pod encryption | MW05 | Protected connection is observed, permitted client works, plain client fails |
 
 ## Supply chain security, 20%
@@ -62,6 +62,6 @@ This map uses the [CNCF CKS 1.37 curriculum](https://github.com/cncf/curriculum/
 
 Start with networking, RBAC/ServiceAccounts, PSA/security contexts, audit interpretation, image analysis and runtime detection. This is a learning sequence chosen for transferable skills, not an estimate of exam-question probability. Then complete the node, encryption, signing, mesh and sandbox work before mixed timed practice.
 
-The 35 drills plus CAP01 provide written coverage of all listed objective groups. That is different from runtime coverage: controllers, CNIs, runtimes, kernels and tool versions affect outcomes. Local repository checks do not prove every lab works on every environment. Use the evidence requirements in [Contributing](../CONTRIBUTING.md) for runtime claims and a local [progress log](PROGRESS.md) for measured attempts.
+The 36 drills plus CAP01 provide written coverage of all listed objective groups. That is different from runtime coverage: controllers, CNIs, runtimes, kernels and tool versions affect outcomes. Local repository checks do not prove every lab works on every environment. Use the evidence requirements in [Contributing](../CONTRIBUTING.md) for runtime claims and a local [progress log](PROGRESS.md) for measured attempts.
 
 This workbook is independent of CNCF, the Linux Foundation and training providers. It contains no recalled exam content. The [allowed-resource rules](REFERENCES.md) govern exam use; the wider study bibliography does not expand them.

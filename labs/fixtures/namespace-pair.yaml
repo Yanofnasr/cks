@@ -1,0 +1,76 @@
+# SPDX-License-Identifier: MIT
+# Separate per-container writable volumes; network namespace is shared.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: namespace-pair
+  namespace: cks-lab
+  labels:
+    exercise: mw06
+spec:
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+  - name: server
+    image: docker.io/library/busybox:1.37
+    command:
+    - sh
+    - -c
+    - mkdir -p /tmp/www; printf "cks-practice\n" > /tmp/www/index.html; exec httpd
+      -f -p 8080 -h /tmp/www
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+        - ALL
+    resources:
+      requests:
+        cpu: 10m
+        memory: 16Mi
+      limits:
+        cpu: 100m
+        memory: 64Mi
+    volumeMounts:
+    - name: server-tmp
+      mountPath: /tmp
+    ports:
+    - containerPort: 8080
+    readinessProbe:
+      httpGet:
+        path: /
+        port: 8080
+      initialDelaySeconds: 1
+      periodSeconds: 2
+  - name: observer
+    image: docker.io/library/busybox:1.37
+    command:
+    - sleep
+    - '86400'
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+        - ALL
+    resources:
+      requests:
+        cpu: 10m
+        memory: 16Mi
+      limits:
+        cpu: 100m
+        memory: 64Mi
+    volumeMounts:
+    - name: observer-tmp
+      mountPath: /tmp
+  volumes:
+  - name: server-tmp
+    emptyDir: {}
+  - name: observer-tmp
+    emptyDir: {}

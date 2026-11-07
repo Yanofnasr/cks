@@ -54,6 +54,7 @@ Read [Workload security](../labs/workload-security.md).
 | MW03 | Secrets, encryption at rest, rewrite and key rotation | Cluster; kubeadm/etcd access for encryption |
 | MW04 | Actual sandboxed workload using RuntimeClass | Node with compatible sandbox runtime |
 | MW05 | mTLS and encryption with real allowed/denied traffic | Cluster with a working mesh |
+| MW06 | Compare network, PID and filesystem isolation | Supplied two-container Pod; optional Docker/Podman repeat |
 
 ## Supply chain security, 20%
 

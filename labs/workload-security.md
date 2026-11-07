@@ -147,3 +147,81 @@ kubectl -n cks-other exec client -c client -- wget -qO- -T 3 http://api.cks-lab.
 **Reset:** delete only `mw05-api-strict` and the injection label added for this drill, then recreate the owned `cks-lab/api` and `cks-lab/client` from the original fixture. Verify they have no proxy and the starting traffic comparison succeeds again. Restore a dedicated cluster snapshot if mesh configuration was changed. Do not purge the cluster's mesh as a per-exercise cleanup step.
 
 References: [Istio mutual TLS](https://istio.io/latest/docs/tasks/security/authentication/mtls-migration/), [Istio CNI](https://istio.io/latest/docs/setup/additional-setup/cni/), [Cilium authentication](https://docs.cilium.io/en/stable/network/servicemesh/mutual-authentication/mutual-authentication/), [Cilium encryption](https://docs.cilium.io/en/stable/security/network/encryption/).
+
+## MW06 Container namespaces
+
+**Environment:** an ordinary Linux container runtime in a disposable cluster. Start from the fresh shared baseline with `cks-lab` available, no mesh injection, and no exercise policies affecting these Pods. A sandbox runtime can virtualize `/proc` differently and should be a separate MW04 comparison. Confirm that neither `namespace-pair` nor `namespace-shared` already exists in `cks-lab` before using those names.
+
+The [two-container fixture](fixtures/namespace-pair.yaml) runs an HTTP server and a sleeping observer as UID 1000. Each has a separate writable `/tmp` volume. It uses no host namespaces, privileged containers, host mounts or extra capabilities.
+
+```bash
+kubectl -n cks-lab get pod namespace-pair namespace-shared --ignore-not-found
+```
+
+Proceed only if the command succeeds without returning Pods, then create the first witness:
+
+```bash
+mkdir -p work/MW06
+kubectl create -f labs/fixtures/namespace-pair.yaml
+kubectl -n cks-lab wait --for=condition=Ready pod/namespace-pair --timeout=120s
+kubectl -n cks-lab exec namespace-pair -c observer -- wget -qO- -T 3 http://127.0.0.1:8080/
+kubectl -n cks-lab exec namespace-pair -c server -- readlink /proc/self/ns/net
+kubectl -n cks-lab exec namespace-pair -c observer -- readlink /proc/self/ns/net
+kubectl -n cks-lab exec namespace-pair -c server -- readlink /proc/self/ns/pid
+kubectl -n cks-lab exec namespace-pair -c observer -- readlink /proc/self/ns/pid
+kubectl -n cks-lab exec namespace-pair -c server -- ps
+kubectl -n cks-lab exec namespace-pair -c observer -- ps
+```
+
+**Prove the default:** both containers report the same network namespace identifier, and the observer reaches the server through localhost. Their PID namespace identifiers differ; the observer's process listing does not show the server's `httpd`. Check the actual identifiers rather than expecting a particular numeric value.
+
+Create a file in only the server's writable volume, then check the observer's independent path:
+
+```bash
+kubectl -n cks-lab exec namespace-pair -c server -- sh -c 'printf "server-only\n" > /tmp/mw06-marker; cat /tmp/mw06-marker'
+kubectl -n cks-lab exec namespace-pair -c observer -- sh -c 'test ! -e /tmp/mw06-marker && echo "marker absent from observer /tmp"'
+```
+
+Sharing the Pod network does not share the containers' root filesystems or these separate `emptyDir` volumes. Explicitly mounting the same volume into both containers would share that volume.
+
+**Task:** copy the fixture to `work/MW06/shared.yaml`, change its Pod name to `namespace-shared`, and set `spec.shareProcessNamespace: true`. Keep all other fields, including the distinct volumes and security settings. Create the new Pod while leaving `namespace-pair` unchanged; do not try to patch this immutable setting on a running Pod.
+
+```bash
+cp labs/fixtures/namespace-pair.yaml work/MW06/shared.yaml
+# Edit the copied Pod name and spec.shareProcessNamespace before creating it.
+kubectl create -f work/MW06/shared.yaml
+kubectl -n cks-lab wait --for=condition=Ready pod/namespace-shared --timeout=120s
+kubectl -n cks-lab exec namespace-shared -c server -- readlink /proc/self/ns/pid
+kubectl -n cks-lab exec namespace-shared -c observer -- readlink /proc/self/ns/pid
+kubectl -n cks-lab exec namespace-shared -c observer -- ps
+kubectl -n cks-lab exec namespace-shared -c observer -- wget -qO- -T 3 http://127.0.0.1:8080/
+kubectl -n cks-lab exec namespace-shared -c server -- sh -c 'printf "shared-pid-only\n" > /tmp/mw06-marker; cat /tmp/mw06-marker'
+kubectl -n cks-lab exec namespace-shared -c observer -- sh -c 'test ! -e /tmp/mw06-marker && echo "marker absent from observer /tmp"'
+```
+
+**Prove the change:** the new Pod's two containers report the same PID namespace identifier, the observer sees `httpd` as well as its own sleeper, and localhost still serves HTTP. The application process is no longer necessarily PID 1. The observer's `/tmp` still has no marker. Repeat the original Pod's PID and process checks to show that its isolation did not change.
+
+Process sharing exposes process metadata and can expose another container's filesystem through `/proc/<pid>/root`, subject to Linux access controls. Separate mount paths do not establish a confidentiality boundary between containers sharing a process namespace. Do not add `SYS_PTRACE` or weaken the fixture to force inspection. Explain why a Pod is a shared trust boundary and how this differs from `hostPID` or `hostNetwork`.
+
+**Optional engine repeat:** on a disposable Linux host with Docker or Podman already installed, compare two ordinary standalone containers. Set `ENGINE=docker` or `ENGINE=podman`; use an isolated lab engine, not a shared or remote production daemon. Confirm both `mw06-a` and `mw06-b` are unused with `$ENGINE ps -a --filter name=mw06`. The names must belong to this drill before cleanup.
+
+```bash
+ENGINE=podman
+for name in mw06-a mw06-b; do
+  "$ENGINE" run -d --name "$name" --network none --user 1000:1000 \
+    --cap-drop ALL --security-opt no-new-privileges --read-only \
+    --tmpfs /tmp:rw,nosuid,nodev,noexec,mode=1777 \
+    docker.io/library/busybox:1.37 sleep 86400
+done
+for name in mw06-a mw06-b; do
+  "$ENGINE" exec "$name" readlink /proc/self/ns/net
+  "$ENGINE" exec "$name" readlink /proc/self/ns/pid
+done
+"$ENGINE" rm -f mw06-a mw06-b
+```
+
+The two standalone containers should have different network and PID namespace identifiers. `--network none` still supplies each container's own loopback interface. This comparison does not make either container share the host's namespaces.
+
+**Reset:** delete only `cks-lab/namespace-pair` and `cks-lab/namespace-shared`. Delete the optional engine containers only if this drill created them. Keep the shared namespace and other exercises intact.
+
+Reference: [share a process namespace between containers](https://kubernetes.io/docs/tasks/configure-pod-container/share-process-namespace/).

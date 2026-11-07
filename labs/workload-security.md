@@ -64,6 +64,26 @@ kubectl -n cks-lab create secret generic training-secret \
 
 Create another dummy Secret after configuration is active. Inspect its raw etcd record using the endpoints and TLS credentials from this control plane, without copying credentials into the repository. Rewrite only the drill-owned pre-existing Secret through the API and inspect its stored representation too.
 
+For a standard kubeadm control plane with local etcd, first verify the endpoint and certificate paths against the active API-server arguments. Then inspect **only the owned dummy Secret**, before and after enabling encryption:
+
+```bash
+sudo etcdctl --endpoints=https://127.0.0.1:2379 \
+  --cacert=/etc/kubernetes/pki/etcd/ca.crt \
+  --cert=/etc/kubernetes/pki/apiserver-etcd-client.crt \
+  --key=/etc/kubernetes/pki/apiserver-etcd-client.key \
+  get /registry/secrets/cks-lab/training-secret --print-value-only | hexdump -C
+```
+
+These paths are an example for that topology, not values to guess on another installation. Use the node's existing client credentials in place; do not copy private keys into `work/`. Once encrypted writes are enabled consistently, create the fresh control and rewrite the old dummy record:
+
+```bash
+kubectl -n cks-lab create secret generic training-secret-next \
+  --from-literal=message=practice-next
+kubectl -n cks-lab get secret training-secret -o json | kubectl replace -f -
+```
+
+Read both exact etcd keys. For an AES-CBC lab provider, encrypted records begin with `k8s:enc:aescbc:v1:<key-name>:`; other providers have their own prefix. Do not confuse the serialized plaintext record, API base64 encoding, or an empty/failed read with encrypted data. Keep the plaintext-before, encrypted-after and still-readable-through-API observations together.
+
 **Task C:** practice rotation with distinct key names. Retain the old key first for writes and add the new key as a non-primary decryption key. Activate and verify that configuration on **every API server** before promoting the new key to first for writes. Activate the new write order everywhere, rewrite the drill-owned Secrets and verify their new stored representation. Do not remove the old key while any retained data or required backup still needs it. A real cluster requires a complete resource migration, beyond this small drill.
 
 **Prove B/C:** API reads return the original dummy values before and after rotation; fresh and rewritten etcd records use encryption and the expected key identity; API-server health remains good. Base64 data in an API Secret is not proof of encryption at rest. As a negative control, the authorized drill ServiceAccount still cannot list all Secrets after encryption is enabled.

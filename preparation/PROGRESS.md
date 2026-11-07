@@ -10,7 +10,7 @@ Record a result only after completing the drill's proof. `pass` requires the int
 | CH01-CH07, cluster hardening | Not measured | Not measured | |
 | SH01-SH05, system hardening | Not measured | Not measured | |
 | MW01-MW06, workload security | Not measured | Not measured | |
-| SC01-SC08, supply chain | Not measured | Not measured | |
+| SC01-SC09, supply chain | Not measured | Not measured | |
 | RT01-RT04, runtime security | Not measured | Not measured | |
 | CAP01, capstone | Not measured | Not measured | |
 

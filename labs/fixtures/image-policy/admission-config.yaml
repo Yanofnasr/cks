@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: MIT
+# Merge this plugin into any existing AdmissionConfiguration.
+apiVersion: apiserver.config.k8s.io/v1
+kind: AdmissionConfiguration
+plugins:
+  - name: ImagePolicyWebhook
+    configuration:
+      imagePolicy:
+        kubeConfigFile: /etc/kubernetes/cks-image-policy/kubeconfig.yaml
+        allowTTL: -1
+        denyTTL: -1
+        retryBackoff: 500
+        defaultAllow: false

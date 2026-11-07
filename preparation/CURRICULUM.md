@@ -45,7 +45,7 @@ This map uses the [CNCF CKS 1.37 curriculum](https://github.com/cncf/curriculum/
 |---|---|---|
 | Minimal functional images | SC01 | Non-root image serves the app with constrained runtime settings |
 | SBOMs, build and artifact understanding | SC05, SC07 | Real component inventory and traceable artifact/build identities |
-| Registry and artifact trust | SC03, SC04, SC06 | Correct digest/publisher accepted; wrong identity, image field or registry rejected |
+| Registry and artifact trust | SC03, SC04, SC06, SC09 | Correct digest/publisher accepted; wrong identity, image field or registry rejected |
 | Static workload/image analysis | SC08, SC02 | Actual misconfiguration findings are repaired; vulnerability scans are distinguished from configuration analysis |
 
 ## Monitoring, logging and runtime security, 20%
@@ -62,6 +62,6 @@ This map uses the [CNCF CKS 1.37 curriculum](https://github.com/cncf/curriculum/
 
 Start with networking, RBAC/ServiceAccounts, PSA/security contexts, audit interpretation, image analysis and runtime detection. This is a learning sequence chosen for transferable skills, not an estimate of exam-question probability. Then complete the node, encryption, signing, mesh and sandbox work before mixed timed practice.
 
-The 36 drills plus CAP01 provide written coverage of all listed objective groups. That is different from runtime coverage: controllers, CNIs, runtimes, kernels and tool versions affect outcomes. Local repository checks do not prove every lab works on every environment. Use the evidence requirements in [Contributing](../CONTRIBUTING.md) for runtime claims and a local [progress log](PROGRESS.md) for measured attempts.
+The 37 drills plus CAP01 provide written coverage of all listed objective groups. That is different from runtime coverage: controllers, CNIs, runtimes, kernels and tool versions affect outcomes. Local repository checks do not prove every lab works on every environment. Use the evidence requirements in [Contributing](../CONTRIBUTING.md) for runtime claims and a local [progress log](PROGRESS.md) for measured attempts.
 
 This workbook is independent of CNCF, the Linux Foundation and training providers. It contains no recalled exam content. The [allowed-resource rules](REFERENCES.md) govern exam use; the wider study bibliography does not expand them.

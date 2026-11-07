@@ -70,6 +70,7 @@ Read [Supply chain](../labs/supply-chain.md).
 | SC06 | Registry admission across regular, init and ephemeral containers | Cluster with ValidatingAdmissionPolicy |
 | SC07 | Trace source, build identity, digest and provenance | Public artifact and its attestation |
 | SC08 | Find and fix workload/Dockerfile misconfigurations | Trivy; builder/runtime and cluster for full proof; KubeLinter optional |
+| SC09 | Configure, test and recover an external image-policy webhook | Single-control-plane VM, Python/OpenSSL and supplied TLS backend |
 
 ## Monitoring, logging and runtime security, 20%
 
@@ -85,7 +86,7 @@ Read [Runtime security](../labs/runtime-security.md).
 ## Practice rhythm
 
 1. Start with CS01, CH02 and MW02 to establish networking, identity and workload fundamentals.
-2. Complete the remaining drills, grouping node work into one VM session and optional-tool work into another.
+2. Follow CS01 with CS06's traffic matrix, CH01's [certificate walkthrough](../solutions/certificate-reader.md), and MW06's namespace comparison. Then group node work into one VM session and optional-tool work into another. Complete CH06 recovery before SC09 modifies admission configuration.
 3. Repeat each weak skill from a clean starting state, without looking at the previous solution. Change names, ports or identities on the second attempt.
 4. Attempt [CAP01](../labs/capstone.md) in 45 minutes. Complete every requirement and record evidence, rather than inventing an exam score.
 5. Build two-hour mixed sessions across the six domains. Use only currently permitted documentation and practice returning to the designated base/SSH host.

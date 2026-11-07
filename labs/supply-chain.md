@@ -133,7 +133,7 @@ kubectl label namespace cks-lab cks-practice=admission --overwrite
 
 For all probes, distinguish an admission-policy rejection from malformed YAML, PSA rejection, authorization failure or an existing Pod name. This registry policy does not verify signatures, image contents or ownership of every image in an allowed registry.
 
-**Extension:** on a cluster with a real image-verification webhook, separately test allowed, unsigned/wrong-identity and unavailable-backend outcomes. Confirm the configured fail-open/fail-closed behavior. Do not create fake webhook CRDs or replace the API-server manifest to simulate this extension.
+**Extension:** use SC09 for a real ImagePolicyWebhook integration, including its backend-outage behavior. That exercise checks image-reference policy, not signatures. On a separately installed signature-verification admission service, repeat SC04's publisher/digest trust tests at admission time.
 
 **Reset:** remove the `cks-practice` label you added and delete only the `cks-allowed-registries` binding and policy. Delete the drill's probe Pods. Do not delete all admission policies.
 
@@ -208,3 +208,15 @@ If the scanner or checks changed during the exercise, rerun both inputs with the
 **Reset:** remove only the repaired `static-analysis-demo` Deployment and any specifically named probe container/image created for this drill. Preserve reports needed for comparison in `work/`. The scanner-only stage creates no cluster resources.
 
 References: [Trivy misconfiguration scanning](https://trivy.dev/docs/latest/scanner/misconfiguration/), [KubeLinter usage](https://github.com/stackrox/kube-linter/blob/main/README.md#using-kubelinter).
+
+## SC09 ImagePolicyWebhook integration
+
+**Environment:** one disposable kubeadm control-plane VM with console access, a snapshot, Python 3 and OpenSSL. This lab changes API-server admission configuration and can reject new Pod requests. Do not use a shared cluster. The [complete setup and recovery guide](fixtures/image-policy/README.md) supplies a small real HTTPS backend, fresh lab certificate commands, kubeconfig and admission configuration.
+
+**Start:** validate the backend directly over mutual TLS before changing the API server. It listens only on the control plane's loopback interface and evaluates actual `imagepolicy.k8s.io/v1alpha1` ImageReview payloads. It never pulls images, verifies signatures or queries a vulnerability database.
+
+**Task:** connect the API server to this backend using a read-only mounted configuration and client certificate, preserve existing admission settings, and enforce the provided explicit-registry policy. Keep `defaultAllow: false`. Use the guide's cache settings so a cached approval cannot hide a backend outage.
+
+**Prove it:** submit valid server-side dry-run Pod requests with allowed and denied ordinary/init images; check the actual ephemeral-container subresource separately. Distinguish backend policy denial from malformed objects, native admission rules and TLS failures. With caches disabled, stop only the lab backend and show that a previously allowed request is now rejected because the backend is unavailable; restart it and prove recovery. Required API health and non-Pod operations must remain available.
+
+**Reset:** restore the saved API-server configuration and verify health before stopping the backend or removing its task-owned files. Follow the guide's exact recovery order. Keep all generated private material in the lab's private working directory, never in Git. If only the direct backend test ran, record that stage separately; it does not prove API-server integration.

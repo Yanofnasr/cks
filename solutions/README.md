@@ -10,6 +10,7 @@ Additional concrete walkthroughs:
 - [Three-tier policy answer](three-tier-policy.yaml): attempt CS06 first, including the AND/OR and additive-policy counterexamples.
 - [Multi-stage Dockerfile](Dockerfile.multistage): use the Go fixture's build context for SC01's compiler-removal exercise.
 - [Gatekeeper template](gatekeeper-template.yaml) and [constraint](gatekeeper-constraint.yaml): create them in the order specified by SC06.
+- [ImagePolicyWebhook setup](../labs/fixtures/image-policy/README.md): fresh certificates, real backend, API-server configuration, cache/outage proof and recovery.
 
 ## CS01: Network isolation
 

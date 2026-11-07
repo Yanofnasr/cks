@@ -35,7 +35,7 @@ Populate the kubeconfig before running these commands. Confirm its endpoint and 
 
 ## Shared starting state
 
-The shared fixtures own **`cks-lab` and `cks-other`**. If either namespace already contains unrelated work, use a fresh cluster. CS06 separately creates `cks-tiers` and `cks-data`. Follow CS06's preflight and cleanup for its extra namespaces. Admission policies/bindings, Gatekeeper templates/constraints, CSRs and RuntimeClasses are explicitly introduced only by their corresponding drills.
+The shared fixtures own **`cks-lab` and `cks-other`**. If either namespace already contains unrelated work, use a fresh cluster. CS06 separately creates `cks-tiers` and `cks-data`; SC09 creates `cks-image-policy`. Follow those drills' preflight and cleanup for their extra namespaces. Admission policies/bindings, Gatekeeper templates/constraints, CSRs and RuntimeClasses are explicitly introduced only by their corresponding drills.
 
 ```bash
 kubectl apply -f labs/fixtures/workloads.yaml
@@ -76,6 +76,7 @@ All four should succeed initially. The clients sleep for 24 hours; recreate the 
 | [three-tier.yaml](../labs/fixtures/three-tier.yaml) | CS06 cross-namespace traffic witnesses, with scoped [policy reference](../solutions/three-tier-policy.yaml) |
 | [namespace-pair.yaml](../labs/fixtures/namespace-pair.yaml) | MW06 two-container network/PID/filesystem comparison |
 | [image-go](../labs/fixtures/image-go/README.md) | SC01 real compilation and multi-stage runtime reduction |
+| [image-policy](../labs/fixtures/image-policy/README.md) | SC09 mutually authenticated HTTPS backend and actual API-server integration |
 
 The AppArmor and seccomp demonstrations isolate one behavior; they are not general production profiles. No profile becomes effective until it is installed on the selected node and a workload actually uses it.
 
@@ -95,6 +96,6 @@ kubectl wait -n cks-other --for=condition=Ready pod --all --timeout=120s
 
 Deleting namespaces does not restore node files, encryption keys, mesh installations, CSRs, RuntimeClasses or other cluster-scoped objects. Each corresponding drill names its cleanup. Use a consistent VM snapshot for host/control-plane recovery when needed. Keep static-Pod backups outside `/etc/kubernetes/manifests` and preserve the current API-server image and unrelated flags.
 
-The shared reset does not delete CS06's extra namespaces. Follow that drill's scoped cleanup before another attempt.
+The shared reset does not delete CS06's extra namespaces or undo SC09's host configuration. Restore the API server's original admission configuration before stopping the webhook backend. Use CH06's verified console recovery procedure rather than depending on a healthy API during a control-plane failure.
 
 For encryption changes, retain old decryption keys until data has been rewritten and verified under the replacement key. Restoring only an old configuration can strand data encrypted with a newer key. Do not delete a system executable merely because it owns a listening port; stop the specific task-owned service instead.

@@ -2,7 +2,7 @@
 
 Work through one skill at a time, then combine them. Every drill has a starting state, task, proof and reset. Copy editable material into `work/`; keep the supplied fixtures as a repeatable starting point.
 
-The domain weights below follow the [official curriculum](REFERENCES.md). The baseline is Kubernetes 1.37. First establish [your lab environment](LAB-SAFETY.md); an unavailable optional component means **blocked by environment**, not a failed skill or a simulated pass.
+The domain weights below follow the [official curriculum](REFERENCES.md). The baseline is Kubernetes 1.37. The [objective map](CURRICULUM.md) explains coverage and practice emphasis. First establish [your lab environment](LAB-SAFETY.md); an unavailable optional component means **blocked by environment**, not a failed skill or a simulated pass.
 
 ## Cluster setup, 15%
 

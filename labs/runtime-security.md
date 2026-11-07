@@ -35,6 +35,17 @@ The first produces a real matching event; the second must not match **this rule*
 
 **Syscall comparison:** in the disposable node's private working directory, trace a harmless child process reading a file you created, using `strace -f` with selected file/read/write syscalls. Compare the raw calls with the higher-level Falco event. Trace only your own child; do not attach to unrelated host processes or weaken global ptrace controls to complete the exercise.
 
+```bash
+mkdir -p work/RT01
+printf 'trace-practice\n' > work/RT01/trace-input
+strace -f -o work/RT01/read.trace -e trace=openat,read,write,close \
+  cat work/RT01/trace-input
+strace -f -o work/RT01/missing.trace -e trace=openat,read,write,close \
+  cat work/RT01/file-that-does-not-exist
+```
+
+Confirm the second path does not exist before using it. In the first trace, follow the descriptor returned by opening the owned file through its read and close. In the second, locate `ENOENT`; a requested file operation is not proof that data was read. Record these separately from the Falco event and remove only these task-owned trace files afterward.
+
 **Reset:** remove only the named custom rule and the two fixture files, then reload and confirm normal Falco operation. Stop only your own trace process. Keep a small non-secret event sample and the rule used.
 
 References: [Falco rule structure](https://falco.org/docs/concepts/rules/basic-elements/), [supported fields](https://falco.org/docs/rules/supported-fields/), [CLI validation](https://falco.org/docs/reference/daemon/cli-arguments/).

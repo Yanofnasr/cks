@@ -29,6 +29,18 @@ Install it as `/etc/systemd/system/cks-demo.service`, reload systemd and enable/
 
 **Reset:** ensure the unit is stopped, remove only `/etc/systemd/system/cks-demo.service` and the task's dummy directory, then reload systemd. Do not kill arbitrary processes using a port or uninstall Python. Restore the snapshot if unrelated host state changed.
 
+**Package-removal variation, Ubuntu/Debian VM:** take a snapshot and check `dpkg-query -W -f='${Status}\n' tree`. Continue with this example only if `tree` was not already installed; otherwise use a fresh disposable image rather than removing a pre-existing dependency. Install only this harmless demonstration package, inspect it, and review the planned removal:
+
+```bash
+sudo apt-get update
+sudo apt-get install --no-install-recommends tree
+tree --version
+dpkg-query -L tree
+sudo apt-get --simulate purge tree
+```
+
+Proceed only if the removal plan affects the task-owned package and no unrelated software. Run `sudo apt-get purge tree`, verify it is no longer installed and its executable is gone, then check the required service/node still works. Do not use `autoremove`, remove shared runtimes, or treat a package that was never installed as a successful removal. Restore the snapshot if the package transaction changed unrelated state.
+
 ## SH02 OS permissions
 
 **Start:** use a disposable VM and confirm the names `cks-reader`, `cks-outsider`, and `/srv/cks-private` do not already exist. Create two dedicated system users with their own groups, no home directories and no login shell. Create the new directory and a `note.txt` containing only a dummy phrase. Initially make the directory traversable and file readable by both users, and demonstrate that baseline.

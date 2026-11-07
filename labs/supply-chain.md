@@ -179,6 +179,8 @@ References: [ConstraintTemplates](https://open-policy-agent.github.io/gatekeeper
 
 **Start:** inspect the warnings in the [static-analysis fixtures](fixtures/static-analysis/README.md). Copy them into an isolated working directory. **Do not apply or build the original inputs.**
 
+Before running a scanner, write down your own findings and the source fields or Dockerfile instructions that justify each one. Compare that manual assessment with the tool output afterward; an absent rule is not proof that an observed unsafe setting is acceptable.
+
 ```bash
 mkdir -p work/SC08/before work/SC08/after
 cp labs/fixtures/static-analysis/deployment.yaml labs/fixtures/static-analysis/Dockerfile work/SC08/before/

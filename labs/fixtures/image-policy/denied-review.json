@@ -1,0 +1,12 @@
+{
+  "apiVersion": "imagepolicy.k8s.io/v1alpha1",
+  "kind": "ImageReview",
+  "spec": {
+    "namespace": "cks-image-policy",
+    "containers": [
+      {"image": "docker.io/library/busybox:1.37"},
+      {"image": "example.invalid/lab/image:v1"}
+    ],
+    "annotations": {"lab.image-policy.k8s.io/allow": "true"}
+  }
+}

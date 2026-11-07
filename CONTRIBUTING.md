@@ -24,7 +24,7 @@ python3 -m unittest discover -s tests -v
 git diff --check
 ```
 
-The checker uses only the Python standard library. Its scope is local Markdown links/anchors, drill consistency and JSON/JSONL syntax. It is not a Markdown renderer, YAML/schema validator, security scanner or Kubernetes grader. Describe additional static tools you ran, including versions, instead of implying these commands cover them.
+The checker uses only the Python standard library. Its scope is local Markdown links/anchors, drill consistency and JSON/JSONL syntax. It is not a Markdown renderer, YAML/schema validator, security scanner or Kubernetes grader. The Python test suite also exercises the image-policy fixture: its TLS tests need OpenSSL and a temporary loopback listener. Missing OpenSSL produces explicitly skipped TLS tests, which must not be reported as TLS validation. Describe additional tools and skips rather than implying these commands cover them.
 
 When changing the compiled image example, run its standard-library-only Go test with Go already installed:
 
@@ -36,7 +36,7 @@ That test exercises the handler without network access; it does not build the Do
 
 For a runtime claim, use disposable infrastructure and report the Kubernetes version, OS, architecture, runtime, CNI and relevant tool/controller versions. Include the starting-state result, successful intended operation, rejected prohibited operation, reason for rejection and verified cleanup. Remove credentials and unrelated data from evidence. State which steps were not run. Do not label a lab validated on a new environment solely because its manifest was accepted.
 
-No cluster access, registry publication or remote installation is needed to run the repository checks. The CI workflow uses the runner's existing Python and Go tools with a read-only repository token.
+No cluster access, registry publication or remote installation is needed to run these checks. The CI workflow uses the runner's existing Python, OpenSSL and Go tools with a read-only repository token. The TLS tests contact only their own loopback server.
 
 ## Licensing and attribution
 

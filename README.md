@@ -23,19 +23,20 @@ Intended for learners who already administer Kubernetes at CKA level. There are 
 
 The target baseline is **Kubernetes 1.37**. See the [curriculum map](preparation/CURRICULUM.md) for objective coverage and [References](preparation/REFERENCES.md) for current exam rules, authoritative technical guidance and optional practice environments.
 
+
 Commands assume the repository root and a lab-only kubeconfig. Node exercises require disposable VMs; mesh, runtime and scanner exercises state their additional prerequisites. This repository does not provision those components or award automatic passing scores. A working application and meaningful negative checks are part of every result.
 
 ## Check, learn and contribute
 
 After attempting the core drills, compare with the [worked references](solutions/README.md). Adapt environment-specific assumptions and run the proof steps; a reference manifest alone is not a passing result.
 
-Run the repository checks with Python 3.11 or newer:
+Run the repository checks with Python 3.11 or newer. The webhook TLS tests also require OpenSSL and permission to open an ephemeral loopback port:
 
 ```bash
 python3 scripts/check.py
 python3 -m unittest discover -s tests -v
 ```
 
-These offline checks cover documentation consistency and JSON fixtures. They do not validate Kubernetes schemas, CEL execution, external URL availability, controller compatibility or live lab behavior. No complete runtime validation matrix is published yet. See [Contributing](CONTRIBUTING.md) for the evidence expected when adding or validating a lab.
+The checker covers documentation consistency and JSON fixtures; the tests also exercise the small webhook's policy and local TLS behavior. They do not validate Kubernetes schemas, CEL/Rego execution, external URL availability, controller compatibility or live cluster behavior. No complete cluster validation matrix is published yet. See [Contributing](CONTRIBUTING.md) for the evidence expected when adding or validating a lab.
 
 Learning material is **CC BY 4.0**; original fixtures and validation code are **MIT**. See [LICENSE](LICENSE) for the boundaries and [Acknowledgements](ACKNOWLEDGEMENTS.md) for the three adapted exercises. Keep credentials and generated results under ignored `work/`.

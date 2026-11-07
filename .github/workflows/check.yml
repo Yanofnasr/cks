@@ -18,7 +18,7 @@ jobs:
           persist-credentials: false
       - name: Check documentation and JSON fixtures
         run: python3 scripts/check.py
-      - name: Test the repository checker
+      - name: Test repository checks and the webhook fixture
         run: python3 -m unittest discover -s tests -v
       - name: Test the compiled image example
         env:

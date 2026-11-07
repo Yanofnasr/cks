@@ -29,6 +29,7 @@ Read [Cluster hardening](../labs/cluster-hardening.md).
 | CH04 | Kubelet authentication and authorization | Disposable worker VM |
 | CH05 | One-minor-version upgrade with drain and recovery | Snapshot of older kubeadm VM pair |
 | CH06 | Break, diagnose and recover the API server | Dedicated single-control-plane VM with snapshot and console |
+| CH07 | Prove node-identity authorization and NodeRestriction admission | Disposable cluster with two nodes and administrator impersonation |
 
 ## System hardening, 10%
 

@@ -332,3 +332,51 @@ kubectl -n cks-other exec client -- wget -qO- -T 3 http://api.cks-other.svc:8080
 Confirm API-server restart counts stop increasing and readiness stays healthy across several probe intervals. Record the failure signature, the node-side tools that worked during the outage, and the recovery checks.
 
 **Reset:** the byte-for-byte restored manifest is the intended reset. Retain the backup until the recovery proof passes. Then remove only `original.yaml` and `fault.yaml` from the recorded `CH06_BACKUP` directory and remove that empty directory. If restoring the VM snapshot instead, use the coordinated recovery point and repeat the health checks.
+
+## CH07 Node authorization and NodeRestriction
+
+**Start:** use a healthy disposable cluster with an actual worker and a second Node. Inspect the API server's effective authorization configuration: it must retain both `Node` and `RBAC`, with the `NodeRestriction` admission plugin enabled. Do not add permissive bindings to `system:nodes` or disable admission to make a probe pass. Run the following as a cluster administrator allowed to impersonate users and groups.
+
+Set the variables to the exact Node names shown by the cluster, with the worker as the impersonated identity:
+
+```bash
+kubectl get nodes -o wide
+CH07_WORKER='replace-with-actual-worker-name'
+CH07_OTHER='replace-with-a-different-node-name'
+test "$CH07_WORKER" != "$CH07_OTHER"
+umask 077
+mkdir -p work/CH07
+kubectl get node "$CH07_WORKER" -o yaml > work/CH07/own-node.yaml
+kubectl get node "$CH07_OTHER" -o yaml > work/CH07/other-node.yaml
+CH07_AS=(--as="system:node:$CH07_WORKER" \
+  --as-group=system:nodes --as-group=system:authenticated)
+```
+
+**Task:** run these three mutation probes individually. Each uses a saved object to identify the Node and a server-side dry run, so the API performs authorization and admission without persisting labels:
+
+```bash
+kubectl "${CH07_AS[@]}" patch -f work/CH07/own-node.yaml --type=merge \
+  --patch '{"metadata":{"labels":{"practice.example.com/ch07":"probe"}}}' \
+  --dry-run=server -o yaml
+kubectl "${CH07_AS[@]}" patch -f work/CH07/own-node.yaml --type=merge \
+  --patch '{"metadata":{"labels":{"node-restriction.kubernetes.io/ch07":"probe"}}}' \
+  --dry-run=server -o yaml
+kubectl "${CH07_AS[@]}" patch -f work/CH07/other-node.yaml --type=merge \
+  --patch '{"metadata":{"labels":{"practice.example.com/ch07":"probe"}}}' \
+  --dry-run=server -o yaml
+```
+
+**Prove:** expect the ordinary label on the worker's own Node to pass. The protected label on its own Node must be rejected by NodeRestriction, and the other-Node mutation must also be rejected. Read the returned reason; an impersonation-permission error or malformed manifest does not demonstrate the intended control.
+
+Compare authorization alone with the admission results:
+
+```bash
+kubectl "${CH07_AS[@]}" auth can-i patch nodes/"$CH07_OTHER"
+kubectl "${CH07_AS[@]}" get node "$CH07_OTHER"
+```
+
+On the 1.37 baseline, the Node authorizer allows Node patch operations and leaves the own-Node write restriction to admission, so `can-i patch` can return `yes` even though the dry-run patch is forbidden. Reading the other Node is denied by authorization. A name-based `kubectl patch node OTHER` can fail its preliminary GET at authorization before sending a patch; using `-f` above avoids confusing that failure with an admission decision. See [Node authorization](https://kubernetes.io/docs/reference/access-authn-authz/node/) and [NodeRestriction](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#noderestriction).
+
+These requests exercise authorization and admission for the impersonated identity. The administrator's credential authenticates the connection, so this does not prove the kubelet possesses a working client certificate. Certificate authentication is a separate check, as practiced in CH01. Keep both impersonated groups explicit; do not use `system:masters`.
+
+**Reset:** no Node should have changed. As administrator, inspect both Nodes and confirm the probe labels were not stored. Remove only `work/CH07/own-node.yaml` and `work/CH07/other-node.yaml` when finished. If a dry-run flag was accidentally omitted, compare with the saved labels and restore only that task's change.

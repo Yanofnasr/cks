@@ -1,6 +1,6 @@
 # CKS practice
 
-Hands-on preparation for the Certified Kubernetes Security Specialist exam: **34 focused drills, one capstone, and reusable practice fixtures**. Exercises map to the published CKS objectives, with explicit starting states, positive and negative checks, and scoped cleanup.
+Hands-on preparation for the Certified Kubernetes Security Specialist exam: **35 focused drills, one capstone, and reusable practice fixtures**. Exercises map to the published CKS objectives, with explicit starting states, positive and negative checks, and scoped cleanup.
 
 Intended for learners who already administer Kubernetes at CKA level. There are no recalled exam questions, predictions of particular tasks, or passing-score guarantees.
 

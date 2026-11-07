@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: MIT
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sPracticeImages
+metadata:
+  name: cks-gatekeeper-images
+spec:
+  enforcementAction: deny
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+    namespaces: [cks-lab]
+  parameters:
+    allowedPrefixes:
+      - docker.io/
+      - registry.k8s.io/

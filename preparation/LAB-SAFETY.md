@@ -35,7 +35,7 @@ Populate the kubeconfig before running these commands. Confirm its endpoint and 
 
 ## Shared starting state
 
-The shared fixtures own **`cks-lab` and `cks-other`**. If either namespace already contains unrelated work, use a fresh cluster. CS06 separately creates `cks-tiers` and `cks-data`. Follow CS06's preflight and cleanup for its extra namespaces. Admission policies/bindings, CSRs and RuntimeClasses are explicitly introduced only by their corresponding drills.
+The shared fixtures own **`cks-lab` and `cks-other`**. If either namespace already contains unrelated work, use a fresh cluster. CS06 separately creates `cks-tiers` and `cks-data`. Follow CS06's preflight and cleanup for its extra namespaces. Admission policies/bindings, Gatekeeper templates/constraints, CSRs and RuntimeClasses are explicitly introduced only by their corresponding drills.
 
 ```bash
 kubectl apply -f labs/fixtures/workloads.yaml

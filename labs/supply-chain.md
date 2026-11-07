@@ -137,6 +137,30 @@ For all probes, distinguish an admission-policy rejection from malformed YAML, P
 
 **Reset:** remove the `cks-practice` label you added and delete only the `cks-allowed-registries` binding and policy. Delete the drill's probe Pods. Do not delete all admission policies.
 
+### Gatekeeper variation
+
+Use a disposable cluster with a compatible, healthy Gatekeeper installation. This variation practices the course's actual ConstraintTemplate/Constraint/Rego workflow, rather than treating native CEL as the same tool. Finish the native-policy cleanup first so another policy cannot explain the rejection. Confirm the names below are unused.
+
+Inspect the original [template](../solutions/gatekeeper-template.yaml) and [constraint](../solutions/gatekeeper-constraint.yaml). They use a structural parameter schema, explicit registry prefixes ending in `/`, and all three container-image fields. Apply the template first, wait for its generated CRD, then apply the constraint:
+
+```bash
+kubectl apply -f solutions/gatekeeper-template.yaml
+kubectl wait --for=create \
+  crd/k8spracticeimages.constraints.gatekeeper.sh --timeout=60s
+kubectl wait --for=condition=Established \
+  crd/k8spracticeimages.constraints.gatekeeper.sh --timeout=60s
+kubectl get constrainttemplate k8spracticeimages -o yaml
+kubectl apply -f solutions/gatekeeper-constraint.yaml
+```
+
+Inspect template/constraint status for ingestion or Rego errors. The `spec.targets[].rego` example uses Gatekeeper's legacy Rego syntax; confirm support in the installed version. Repeat the allowed-image, rejected-main-image and rejected-init-image server-side dry runs in `cks-lab`, then prove that the same otherwise-valid request in `cks-other` is unaffected. The constraint's named rejection must be the reason for denial.
+
+In a working copy, restrict the permitted prefixes further and show the changed result; restore the intended list afterward. Inspect the installed validating webhook's subresource rules before testing ephemeral-container updates. A template can inspect that field only when the controller actually receives the request. Record a routing gap instead of claiming enforcement from Rego text alone.
+
+Delete only `cks-gatekeeper-images` first, verify the previously rejected dry run is accepted again, then delete `k8spracticeimages`. Do not remove the Gatekeeper installation or other constraints. These examples check registry prefixes, not image signatures or contents.
+
+References: [ConstraintTemplates](https://open-policy-agent.github.io/gatekeeper/website/docs/constrainttemplates/), [Killer Shell admission-policy practice](https://github.com/killer-sh/cks-course-environment/tree/f10551265c2eb04c12a443afaa8500eb824530de/course-content/opa).
+
 ## SC07 Build provenance
 
 **Environment:** the local Git checkout, SC01 build outputs and a JSON/text editor. A real attestation-verification extension also needs an artifact with published provenance and a trusted verifier already installed.

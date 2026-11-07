@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: MIT
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8spracticeimages
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sPracticeImages
+      validation:
+        openAPIV3Schema:
+          type: object
+          required: [allowedPrefixes]
+          properties:
+            allowedPrefixes:
+              type: array
+              minItems: 1
+              items:
+                type: string
+                pattern: '.+/$'
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8spracticeimages
+
+        images[image] {
+          image := input.review.object.spec.containers[_].image
+        }
+
+        images[image] {
+          image := input.review.object.spec.initContainers[_].image
+        }
+
+        images[image] {
+          image := input.review.object.spec.ephemeralContainers[_].image
+        }
+
+        allowed(image) {
+          prefix := input.parameters.allowedPrefixes[_]
+          startswith(image, prefix)
+        }
+
+        violation[{"msg": msg}] {
+          image := images[_]
+          not allowed(image)
+          msg := sprintf("CKS registry policy rejects %v", [image])
+        }

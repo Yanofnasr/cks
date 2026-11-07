@@ -6,6 +6,7 @@ Start each independent example from the [shared lab baseline](../preparation/LAB
 
 Additional concrete walkthroughs:
 
+- [Certificate issuance and RBAC scope](certificate-reader.md): Kubernetes CSR, manual signing and actual credential use.
 - [Three-tier policy answer](three-tier-policy.yaml): attempt CS06 first, including the AND/OR and additive-policy counterexamples.
 
 ## CS01: Network isolation

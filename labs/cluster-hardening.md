@@ -23,6 +23,8 @@ kubectl --kubeconfig work/CH01/reader.conf get secrets -n cks-lab
 
 Expect `yes`, `no`, `no`, the intended user identity, a Pod list, and an authorization denial respectively. Inspect the certificate subject and actual validity dates; requested lifetime is not proof of issued lifetime. Confirm create/delete operations are also denied.
 
+The [certificate-reader reference](../solutions/certificate-reader.md) gives the full CSR, approval, certificate retrieval and isolated kubeconfig sequence. After the basic proof, compare a read-only ClusterRole bound through a namespaced RoleBinding with the same ClusterRole bound through a ClusterRoleBinding. Test both namespaces using the actual client certificate, then remove the broader binding. Its separate manual-signing variation uses a fresh identity and the disposable control plane's client CA key in place, with a unique serial, client-authentication extensions and a short lifetime.
+
 **Role-escalation check:** as the administrator, create a temporary Role named `ch01-role-author` allowing only `create` on `roles` in `rbac.authorization.k8s.io`, and bind it to `cks-reader` through a RoleBinding with the same name. Do not grant `escalate`, `bind`, updates or wildcard permissions. The user can now submit a Role, but Kubernetes must still reject permissions it does not hold:
 
 ```bash
@@ -69,9 +71,98 @@ kubectl --as=system:serviceaccount:cks-lab:ch02-client create rolebinding ch02-f
 
 The first should be accepted; the second should be forbidden because the identity cannot bind a Role containing an unheld permission. Neither binding is stored. Remove the temporary `ch02-binding-author` RoleBinding and Role, then the unbound `ch02-secret-probe` Role. Confirm the ServiceAccount returns to its original Pod-reader-only permissions. See [restrictions on RoleBinding creation](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#restrictions-on-role-binding-creation-or-update).
 
-**Extension:** with a dummy Secret only, explain and demonstrate how adding `create pods` can allow an identity to create a Pod that mounts a namespace Secret even when direct Secret reads are forbidden. Grant that permission only in a temporary exercise Role, create the test workload as that identity, and remove the extra permission afterward. Namespace workload creation is a significant authority boundary.
+**Secret-via-Pod extension:** start with the original Pod-reader-only ServiceAccount and no other exercise grants. Use this synthetic value only. As the administrator, create the dummy Secret and prepare a restricted-compatible Pod:
 
-**Reset:** remove any remaining `ch02-binding-author` RoleBinding and Role and the unbound `ch02-secret-probe` Role. Delete the exercise Pods, `ch02-pod-reader` RoleBinding and Role, ServiceAccount and dummy Secret, including any temporary Role from the workload-creation extension. Confirm no exercise binding remains and do not change the `default` ServiceAccount or another task's identity.
+```bash
+umask 077
+mkdir -p work/CH02
+kubectl -n cks-lab create secret generic ch02-dummy-secret \
+  --from-literal=marker=ch02-dummy-value
+cat > work/CH02/secret-mount.yaml <<'EOF'
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ch02-secret-mount
+  namespace: cks-lab
+spec:
+  serviceAccountName: ch02-client
+  automountServiceAccountToken: false
+  restartPolicy: Never
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+  - name: probe
+    image: docker.io/library/busybox:1.37
+    command:
+    - sh
+    - -c
+    - 'test "$(cat /dummy/marker)" = ch02-dummy-value && echo "mounted dummy Secret matched"'
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop: [ALL]
+    resources:
+      requests:
+        cpu: 10m
+        memory: 16Mi
+      limits:
+        cpu: 100m
+        memory: 64Mi
+    volumeMounts:
+    - name: dummy
+      mountPath: /dummy
+      readOnly: true
+  volumes:
+  - name: dummy
+    secret:
+      secretName: ch02-dummy-secret
+      defaultMode: 0440
+EOF
+kubectl --as=system:serviceaccount:cks-lab:ch02-client \
+  -n cks-lab get secret ch02-dummy-secret
+kubectl --as=system:serviceaccount:cks-lab:ch02-client \
+  create -f work/CH02/secret-mount.yaml --dry-run=server
+```
+
+Both requests must initially be forbidden. Temporarily grant only Pod creation in this lab namespace, then submit the Pod **as the limited identity**:
+
+```bash
+kubectl -n cks-lab create role ch02-pod-creator --verb=create --resource=pods
+kubectl -n cks-lab create rolebinding ch02-pod-creator \
+  --role=ch02-pod-creator --serviceaccount=cks-lab:ch02-client
+kubectl --as=system:serviceaccount:cks-lab:ch02-client \
+  create -f work/CH02/secret-mount.yaml
+kubectl -n cks-lab wait --for=jsonpath='{.status.phase}'=Succeeded \
+  pod/ch02-secret-mount --timeout=120s
+kubectl --as=system:serviceaccount:cks-lab:ch02-client \
+  -n cks-lab get pod ch02-secret-mount -o jsonpath='{.status.phase}{"\n"}'
+kubectl -n cks-lab logs ch02-secret-mount
+kubectl --as=system:serviceaccount:cks-lab:ch02-client \
+  -n cks-lab get secret ch02-dummy-secret
+```
+
+Expect `Succeeded`, the fixed success message, and another direct Secret-read denial. The administrator reads the diagnostic log; the limited identity can already see the successful exit through its ordinary Pod-read permission. A Pod that cannot start or mount the Secret is not a successful proof. The kubelet supplied the mounted Secret without requiring the Pod creator to hold `get secrets`. Disabling ServiceAccount token mounting did not stop this filesystem access. This is why namespace workload creation can confer [indirect access to Secrets](https://kubernetes.io/docs/concepts/security/rbac-good-practices/#workload-creation).
+
+Remove the extra grant and the already-created workload separately:
+
+```bash
+kubectl -n cks-lab delete rolebinding ch02-pod-creator
+kubectl -n cks-lab delete role ch02-pod-creator
+kubectl --as=system:serviceaccount:cks-lab:ch02-client \
+  auth can-i create pods -n cks-lab
+kubectl -n cks-lab delete pod ch02-secret-mount --wait=true
+kubectl -n cks-lab delete secret ch02-dummy-secret
+```
+
+The authorization answer must return to `no`. Removing the creation grant does not terminate an existing Pod or remove its mounted data. RBAC cannot constrain a `create pods` grant to a preselected Pod name; keep this brief grant confined to the disposable namespace.
+
+**Reset:** remove any remaining `ch02-binding-author` and `ch02-pod-creator` RoleBindings and Roles and the unbound `ch02-secret-probe` Role. Delete `ch02-client` and `ch02-secret-mount` Pods, `ch02-pod-reader` RoleBinding and Role, `ch02-client` ServiceAccount and `ch02-dummy-secret` Secret. Remove the local extension manifest when finished. Confirm no exercise binding remains and do not change the `default` ServiceAccount or another task's identity.
 
 The optional [worked references](../solutions/README.md) cover the ordinary Pod-reader identity and token-mounting setup.
 

@@ -35,7 +35,7 @@ Populate the kubeconfig before running these commands. Confirm its endpoint and 
 
 ## Shared starting state
 
-The fixtures own **`cks-lab` and `cks-other`**. If either namespace already contains unrelated work, use a fresh cluster. The only cluster-scoped fixture objects beyond these namespaces are the explicitly applied `cks-allowed-registries` policy and binding.
+The shared fixtures own **`cks-lab` and `cks-other`**. If either namespace already contains unrelated work, use a fresh cluster. CS06 separately creates `cks-tiers` and `cks-data`. Follow CS06's preflight and cleanup for its extra namespaces. Admission policies/bindings, CSRs and RuntimeClasses are explicitly introduced only by their corresponding drills.
 
 ```bash
 kubectl apply -f labs/fixtures/workloads.yaml
@@ -73,6 +73,7 @@ All four should succeed initially. The clients sleep for 24 hours; recreate the 
 | [registry-policy.yaml](../labs/fixtures/registry-policy.yaml) | SC06 allowlist, applies only to namespaces labeled `cks-practice=admission` |
 | [audit-policy.yaml](../labs/fixtures/audit-policy.yaml) | RT02 Metadata policy that avoids request/response Secret bodies |
 | [audit-events.jsonl](../labs/fixtures/audit-events.jsonl) | Four synthetic events for local investigation, never evidence of a real incident |
+| [three-tier.yaml](../labs/fixtures/three-tier.yaml) | CS06 cross-namespace traffic witnesses, with scoped [policy reference](../solutions/three-tier-policy.yaml) |
 
 The AppArmor and seccomp demonstrations isolate one behavior; they are not general production profiles. No profile becomes effective until it is installed on the selected node and a workload actually uses it.
 
@@ -91,5 +92,7 @@ kubectl wait -n cks-other --for=condition=Ready pod --all --timeout=120s
 ```
 
 Deleting namespaces does not restore node files, encryption keys, mesh installations, CSRs, RuntimeClasses or other cluster-scoped objects. Each corresponding drill names its cleanup. Use a consistent VM snapshot for host/control-plane recovery when needed. Keep static-Pod backups outside `/etc/kubernetes/manifests` and preserve the current API-server image and unrelated flags.
+
+The shared reset does not delete CS06's extra namespaces. Follow that drill's scoped cleanup before another attempt.
 
 For encryption changes, retain old decryption keys until data has been rewritten and verified under the replacement key. Restoring only an old configuration can strand data encrypted with a newer key. Do not delete a system executable merely because it owns a listening port; stop the specific task-owned service instead.

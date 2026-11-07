@@ -15,6 +15,7 @@ Read [Cluster setup](../labs/cluster-setup.md).
 | CS03 | Find and remediate an actual CIS benchmark failure | kubeadm VMs and matching kube-bench |
 | CS04 | Serve the intended hostname with a verifiable TLS certificate | Cluster with Ingress controller |
 | CS05 | Verify exact platform binary identity | Local files and trusted release metadata |
+| CS06 | Three-tier traffic, selector AND/OR and additive policies | Cluster with enforcing CNI; supplied witnesses and policy reference |
 
 ## Cluster hardening, 15%
 

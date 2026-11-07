@@ -4,6 +4,10 @@ Attempt the [drills](../preparation/STUDY-PATH.md) first. These are selected ref
 
 Start each independent example from the [shared lab baseline](../preparation/LAB-SAFETY.md). All commands run from the repository root with the intended lab kubeconfig. Keep edits and evidence under `work/`. Reference manifests have not been validated end-to-end on every supported environment; the proof and recovery steps remain required.
 
+Additional concrete walkthroughs:
+
+- [Three-tier policy answer](three-tier-policy.yaml): attempt CS06 first, including the AND/OR and additive-policy counterexamples.
+
 ## CS01: Network isolation
 
 Inspect the resolver before using [network-policy.yaml](network-policy.yaml):

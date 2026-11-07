@@ -261,3 +261,74 @@ Use only the documented steps for the starting and target versions. Resolve drai
 **Prove:** collect the API-server, kubeadm and kubelet versions, node Ready/schedulable state, DNS resolution and application response after each node. The workload must recover. Check that no node remains cordoned and the actual configuration still satisfies the hardening from earlier drills. A successful package install alone is insufficient.
 
 **Reset:** delete the exercise Deployment and use the saved recovery procedure if returning to the old version. Do not attempt a package-only downgrade of a changed control plane or discard the recovery data before validating the upgraded cluster.
+
+## CH06 Recover an unavailable API server
+
+**Start:** use a dedicated kubeadm cluster with one control-plane VM, a worker and the healthy shared workloads. Take a coordinated recovery snapshot and verify console/SSH access that does not depend on Kubernetes. This drill deliberately stops the only API server. Reserve this disposable cluster for the exercise and plan for API downtime; running Pods may continue, but scheduling and cluster administration will be unavailable.
+
+Before the fault, record `kubectl get --raw='/readyz'`, `kubectl get nodes -o wide` and Pod readiness in both fixture namespaces. On the **control-plane VM**, inspect the active kubelet configuration and verify its static-Pod directory is `/etc/kubernetes/manifests`. Verify `sudo crictl ps -a --name kube-apiserver` works with the node's configured CRI endpoint before you need it for recovery. If this node uses different paths, resolve them before proceeding.
+
+Save the existing manifest outside the watched directory, with its permissions, and keep this shell open:
+
+```bash
+CH06_MANIFEST=/etc/kubernetes/manifests/kube-apiserver.yaml
+CH06_BACKUP=$(sudo mktemp -d /root/ch06-recovery.XXXXXX)
+sudo cp --preserve=all "$CH06_MANIFEST" "$CH06_BACKUP/original.yaml"
+sudo cmp "$CH06_MANIFEST" "$CH06_BACKUP/original.yaml"
+printf '%s\n' "$CH06_BACKUP"
+sudo cp --preserve=all "$CH06_BACKUP/original.yaml" "$CH06_BACKUP/fault.yaml"
+sudoedit "$CH06_BACKUP/fault.yaml"
+```
+
+Record the printed backup directory in your private notes so that a replacement console shell can recover it. In `fault.yaml`, add exactly one argument to the existing `kube-apiserver` command list, using the same indentation as its other arguments:
+
+```yaml
+    - --ch06-deliberate-unknown-flag=true
+```
+
+**Task:** inspect the diff. It must contain only the added unknown flag, with the current image, mounts and all existing arguments preserved. A diff exit status of 1 means the expected difference exists. Then copy that edited manifest over the active file:
+
+```bash
+sudo diff -u "$CH06_BACKUP/original.yaml" "$CH06_BACKUP/fault.yaml"
+sudo cp --preserve=all "$CH06_BACKUP/fault.yaml" "$CH06_MANIFEST"
+```
+
+Wait for the kubelet to observe the change. From the normal lab terminal, `kubectl --request-timeout=5s get --raw='/readyz'` should become unavailable. On the VM, diagnose without relying on `kubectl`:
+
+```bash
+sudo crictl ps -a --name kube-apiserver
+sudo journalctl -u kubelet --since='5 minutes ago' --no-pager -n 80
+```
+
+Select the newest **failed** API-server container ID from that list and inspect its log:
+
+```bash
+CH06_FAILED_CONTAINER='replace-with-the-failed-container-id'
+sudo crictl logs "$CH06_FAILED_CONTAINER"
+sudo diff -u "$CH06_BACKUP/original.yaml" "$CH06_MANIFEST"
+```
+
+Identify the unknown-flag error and tie it to the single changed line. A connection timeout alone is not a diagnosis. Restore the exact saved manifest on the VM, even if the API is completely unreachable:
+
+```bash
+sudo cp --preserve=all "$CH06_BACKUP/original.yaml" "$CH06_MANIFEST"
+sudo cmp "$CH06_BACKUP/original.yaml" "$CH06_MANIFEST"
+sudo crictl ps -a --name kube-apiserver
+```
+
+The kubelet recreates the [static Pod](https://kubernetes.io/docs/tasks/configure-pod-container/static-pod/) from the restored file. Do not use `kubeadm reset`, regenerate certificates, replace the manifest with a sample, or delete the cluster. If recovery stalls, inspect the current container log and kubelet journal before making another change.
+
+**Prove:** once the API responds again, run these from the ordinary lab terminal:
+
+```bash
+kubectl get --raw='/readyz?verbose'
+kubectl wait --for=condition=Ready nodes --all --timeout=180s
+kubectl -n cks-lab wait --for=condition=Ready pod --all --timeout=120s
+kubectl -n cks-other wait --for=condition=Ready pod --all --timeout=120s
+kubectl -n cks-lab exec client -- wget -qO- -T 3 http://api.cks-lab.svc:8080/
+kubectl -n cks-other exec client -- wget -qO- -T 3 http://api.cks-other.svc:8080/
+```
+
+Confirm API-server restart counts stop increasing and readiness stays healthy across several probe intervals. Record the failure signature, the node-side tools that worked during the outage, and the recovery checks.
+
+**Reset:** the byte-for-byte restored manifest is the intended reset. Retain the backup until the recovery proof passes. Then remove only `original.yaml` and `fault.yaml` from the recorded `CH06_BACKUP` directory and remove that empty directory. If restoring the VM snapshot instead, use the coordinated recovery point and repeat the health checks.

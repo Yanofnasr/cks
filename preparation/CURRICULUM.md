@@ -18,7 +18,7 @@ This map uses the [CNCF CKS 1.37 curriculum](https://github.com/cncf/curriculum/
 |---|---|---|
 | Least-privilege RBAC | CH01, CAP01 | Authorized operation works; forbidden scope and escalation requests fail |
 | Careful ServiceAccount use | CH02 | Token mounting and API permissions are verified independently |
-| Kubernetes API access | CH03, CH04 | Protected endpoints reject anonymous access while required probes and operations work |
+| Kubernetes API access | CH03, CH04, CH06 | Protected endpoints reject anonymous access while required probes and operations work |
 | Kubernetes upgrades | CH05 | Supported version transition, recovered workload, Ready and schedulable nodes |
 
 ## System hardening, 10%
@@ -62,6 +62,6 @@ This map uses the [CNCF CKS 1.37 curriculum](https://github.com/cncf/curriculum/
 
 Start with networking, RBAC/ServiceAccounts, PSA/security contexts, audit interpretation, image analysis and runtime detection. This is a learning sequence chosen for transferable skills, not an estimate of exam-question probability. Then complete the node, encryption, signing, mesh and sandbox work before mixed timed practice.
 
-The 33 drills plus CAP01 provide written coverage of all listed objective groups. That is different from runtime coverage: controllers, CNIs, runtimes, kernels and tool versions affect outcomes. Local repository checks do not prove every lab works on every environment. Use the evidence requirements in [Contributing](../CONTRIBUTING.md) for runtime claims and a local [progress log](PROGRESS.md) for measured attempts.
+The 34 drills plus CAP01 provide written coverage of all listed objective groups. That is different from runtime coverage: controllers, CNIs, runtimes, kernels and tool versions affect outcomes. Local repository checks do not prove every lab works on every environment. Use the evidence requirements in [Contributing](../CONTRIBUTING.md) for runtime claims and a local [progress log](PROGRESS.md) for measured attempts.
 
 This workbook is independent of CNCF, the Linux Foundation and training providers. It contains no recalled exam content. The [allowed-resource rules](REFERENCES.md) govern exam use; the wider study bibliography does not expand them.

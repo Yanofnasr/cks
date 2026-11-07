@@ -7,7 +7,7 @@ Record a result only after completing the drill's proof. `pass` requires the int
 | Domain | First pass | Independent retry | Next weak skill |
 |---|---|---|---|
 | CS01-CS06, cluster setup | Not measured | Not measured | |
-| CH01-CH05, cluster hardening | Not measured | Not measured | |
+| CH01-CH06, cluster hardening | Not measured | Not measured | |
 | SH01-SH05, system hardening | Not measured | Not measured | |
 | MW01-MW05, workload security | Not measured | Not measured | |
 | SC01-SC08, supply chain | Not measured | Not measured | |

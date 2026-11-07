@@ -28,6 +28,7 @@ Read [Cluster hardening](../labs/cluster-hardening.md).
 | CH03 | API authentication, authorization, admission and TLS | kubeadm VM with recovery access |
 | CH04 | Kubelet authentication and authorization | Disposable worker VM |
 | CH05 | One-minor-version upgrade with drain and recovery | Snapshot of older kubeadm VM pair |
+| CH06 | Break, diagnose and recover the API server | Dedicated single-control-plane VM with snapshot and console |
 
 ## System hardening, 10%
 

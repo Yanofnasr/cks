@@ -38,12 +38,16 @@ Use LF/CNCF for exam scope and the component maintainers for implementation deta
 | Images and signatures | [Trivy](https://trivy.dev/docs/latest/), [Cosign verification](https://docs.sigstore.dev/cosign/verifying/verify/), [BOM CLI](https://kubernetes-sigs.github.io/bom/cli-reference/), [Syft](https://github.com/anchore/syft) |
 | Static configuration analysis | [Trivy misconfiguration scanning](https://trivy.dev/docs/latest/scanner/misconfiguration/), [KubeLinter](https://github.com/stackrox/kube-linter), [Kubesec](https://kubesec.io/) |
 | Admission | [ValidatingAdmissionPolicy](https://kubernetes.io/docs/reference/access-authn-authz/validating-admission-policy/), [admission controllers](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/) |
+| Course admission practices | [ImagePolicyWebhook](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#imagepolicywebhook), [Gatekeeper ConstraintTemplates](https://open-policy-agent.github.io/gatekeeper/website/docs/constrainttemplates/) |
+| Container internals and image builds | [Shared process namespaces](https://kubernetes.io/docs/tasks/configure-pod-container/share-process-namespace/), [multi-stage builds](https://docs.docker.com/build/building/multi-stage/) |
 | Runtime detection | [Falco rule structure](https://falco.org/docs/concepts/rules/basic-elements/), [supported event fields](https://falco.org/docs/rules/supported-fields/), [Kubernetes auditing](https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/) |
 | Provenance | [GitHub artifact attestations](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations), [SLSA specification](https://slsa.dev/spec/) |
 
 ## Optional browser practice
 
 Use these when you want a temporary environment for repetition. The local drills remain the workbook's primary path; hosted scenarios have their own versions, prerequisites and scoring.
+
+The [Killer Shell practice map](CURRICULUM.md#killer-shell-practice-coverage) links the full course topic set to local exercises, including the new recovery, NodeRestriction, namespaces, three-tier and webhook practice. The selected browser links below remain alternatives when an appropriate local environment is unavailable.
 
 | Skill | Killer Shell / Killercoda scenario |
 |---|---|

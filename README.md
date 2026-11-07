@@ -23,6 +23,7 @@ Intended for learners who already administer Kubernetes at CKA level. There are 
 
 The target baseline is **Kubernetes 1.37**. See the [curriculum map](preparation/CURRICULUM.md) for objective coverage and [References](preparation/REFERENCES.md) for current exam rules, authoritative technical guidance and optional practice environments.
 
+The [course-practice map](preparation/CURRICULUM.md#killer-shell-practice-coverage) connects Killer Shell's practical topics to local exercises: three-tier traffic rules, certificate issuance, API-server recovery, node restrictions, container namespaces, multi-stage images, Gatekeeper and an actual ImagePolicyWebhook backend. Use the local starting states and proof steps; browser scenarios are optional alternatives.
 
 Commands assume the repository root and a lab-only kubeconfig. Node exercises require disposable VMs; mesh, runtime and scanner exercises state their additional prerequisites. This repository does not provision those components or award automatic passing scores. A working application and meaningful negative checks are part of every result.
 

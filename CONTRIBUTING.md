@@ -26,9 +26,17 @@ git diff --check
 
 The checker uses only the Python standard library. Its scope is local Markdown links/anchors, drill consistency and JSON/JSONL syntax. It is not a Markdown renderer, YAML/schema validator, security scanner or Kubernetes grader. Describe additional static tools you ran, including versions, instead of implying these commands cover them.
 
+When changing the compiled image example, run its standard-library-only Go test with Go already installed:
+
+```bash
+GOTOOLCHAIN=local GOPROXY=off go test labs/fixtures/image-go/main.go labs/fixtures/image-go/main_test.go
+```
+
+That test exercises the handler without network access; it does not build the Docker image or prove its runtime constraints.
+
 For a runtime claim, use disposable infrastructure and report the Kubernetes version, OS, architecture, runtime, CNI and relevant tool/controller versions. Include the starting-state result, successful intended operation, rejected prohibited operation, reason for rejection and verified cleanup. Remove credentials and unrelated data from evidence. State which steps were not run. Do not label a lab validated on a new environment solely because its manifest was accepted.
 
-No cluster access, registry publication or remote installation is needed to run the repository checks. The CI workflow runs the same offline checks with a read-only repository token.
+No cluster access, registry publication or remote installation is needed to run the repository checks. The CI workflow uses the runner's existing Python and Go tools with a read-only repository token.
 
 ## Licensing and attribution
 

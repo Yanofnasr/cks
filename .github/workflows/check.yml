@@ -20,3 +20,8 @@ jobs:
         run: python3 scripts/check.py
       - name: Test the repository checker
         run: python3 -m unittest discover -s tests -v
+      - name: Test the compiled image example
+        env:
+          GOTOOLCHAIN: local
+          GOPROXY: "off"
+        run: go test labs/fixtures/image-go/main.go labs/fixtures/image-go/main_test.go

@@ -18,6 +18,34 @@ docker build -t cks-image:practice work/image
 
 **Reset:** stop and remove only your named probe container. Remove the `cks-image:practice` tag if no subsequent drill needs it. Do not prune the shared image store.
 
+### Compiler-to-runtime variation
+
+The [Go starter](fixtures/image-go/README.md) makes multi-stage reduction a concrete operation, following the course's image-footprint practice. It has a real compilation step and no external Go dependencies. With an installed builder, use a fresh working directory:
+
+```bash
+mkdir -p work/SC01-go
+cp labs/fixtures/image-go/main.go labs/fixtures/image-go/Dockerfile work/SC01-go/
+docker build -t cks-go:single work/SC01-go
+```
+
+The first image deliberately keeps the Go toolchain and source. Rewrite the copied Dockerfile to compile a static binary in a named build stage, copy only that binary into a runtime stage, and run as UID/GID 65532 on port 8080. Choose a verified builder-image digest. The [multi-stage reference](../solutions/Dockerfile.multistage) is available after attempting the edit; use `work/SC01-go` as its build context, not the repository root.
+
+Build the result as `cks-go:multi`. Run each image in turn as a named probe with the port published only to `127.0.0.1`, and confirm that both return `cks-practice`. Compare image sizes/history and verify that the final image has no compiler, source tree or shell. Repeat the final image with a read-only root, all capabilities dropped and no-new-privileges. A missing shell must not be confused with a failed application: HTTP must still work.
+
+For example, after building the final image:
+
+```bash
+docker run -d --name cks-go-probe --read-only --cap-drop ALL \
+  --security-opt no-new-privileges -p 127.0.0.1:18080:8080 cks-go:multi
+curl --fail http://127.0.0.1:18080/
+docker inspect --format '{{.Config.User}} {{.State.Running}}' cks-go-probe
+docker exec cks-go-probe /bin/sh -c true
+```
+
+Check that the name and local port are unused before starting. Expect a working page, configured non-root identity, and an explicit missing-executable failure for the shell probe. Inspect the effective runtime settings too. Remove only `cks-go-probe` and the two task-owned image tags when finished. `scratch` works for this static application; other applications may require CA certificates, libraries or timezone data.
+
+Reference: [multi-stage builds](https://docs.docker.com/build/building/multi-stage/).
+
 ## SC02 Vulnerability scanning
 
 **Environment:** Trivy with a usable vulnerability database, plus the image built in SC01. Database downloads may require network access. Record scanner/database versions and update times.

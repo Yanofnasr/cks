@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: MIT
+ARG GO_IMAGE=docker.io/library/golang:1.26-alpine
+FROM ${GO_IMAGE} AS build
+WORKDIR /src
+COPY main.go .
+RUN CGO_ENABLED=0 go build -trimpath -o /server main.go
+
+FROM scratch
+COPY --from=build --chown=65532:65532 /server /server
+USER 65532:65532
+EXPOSE 8080
+ENTRYPOINT ["/server"]

@@ -8,6 +8,7 @@ Additional concrete walkthroughs:
 
 - [Certificate issuance and RBAC scope](certificate-reader.md): Kubernetes CSR, manual signing and actual credential use.
 - [Three-tier policy answer](three-tier-policy.yaml): attempt CS06 first, including the AND/OR and additive-policy counterexamples.
+- [Multi-stage Dockerfile](Dockerfile.multistage): use the Go fixture's build context for SC01's compiler-removal exercise.
 
 ## CS01: Network isolation
 

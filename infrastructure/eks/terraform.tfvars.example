@@ -1,0 +1,10 @@
+# Replace every account, identity, region, address and version with your lab values.
+account_id           = "123456789012"
+region               = "eu-west-1"
+availability_zones   = ["eu-west-1a", "eu-west-1b"]
+name                 = "cks-practice"
+admin_cidr           = "203.0.113.10/32"
+admin_principal_arn  = "arn:aws:iam::123456789012:role/training-admin"
+kubernetes_version   = "1.37"
+node_release_version = "REPLACE_WITH_MATCHING_EKS_AMI_RELEASE"
+expires_on           = "REPLACE_WITH_REMOVAL_DATE"

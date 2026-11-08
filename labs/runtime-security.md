@@ -64,11 +64,13 @@ References: [Falco rule structure](https://falco.org/docs/concepts/rules/basic-e
 
 Create a drill-owned `audit-reader` ServiceAccount in `cks-lab`, with a Role/RoleBinding permitting Pod listing and no Secret reads. As the lab administrator, impersonate that identity for one actual Pod-list request and one actual Secret-read request. Do not substitute `kubectl auth can-i` for the requests: it tests authorization through a different API operation.
 
-**Prove B:** the Pod list succeeds, the Secret request is forbidden, and the response-complete audit events identify the correct actor, verb, resource, namespace and status. There must be no Secret request/response body in those records. Confirm the correct policy rule matched and that API/node health remains good. If you add an exclusion, place it before broader matching rules and test both an excluded and a retained event.
+**Prove B:** the Pod list succeeds, the Secret request is forbidden, and the response-complete audit events identify the correct actor, verb, resource, namespace and status. For these impersonated requests, record both `user.username` (the authenticated administrator) and `impersonatedUser.username` (`system:serviceaccount:cks-lab:audit-reader`, whose permissions were exercised). Do not attribute the administrator's credential to the ServiceAccount. The offline fixture's direct-identity events have no `impersonatedUser`; that absence is expected for those synthetic examples.
+
+There must be no Secret request/response body in those records. Confirm the correct policy rule matched and that API/node health remains good. If you add an exclusion, place it before broader matching rules and test both an excluded and a retained event.
 
 **Reset:** remove only `audit-reader` and its Role/RoleBinding. Restore the control-plane snapshot, or carefully restore the saved manifest/policy and remove only the drill's mounts/files after API health is verified. Keep logs protected and remove them when the exercise's retention period ends.
 
-Reference: [Kubernetes auditing](https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/).
+References: [Kubernetes auditing](https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/), [audit event identity fields](https://kubernetes.io/docs/reference/config-api/apiserver-audit.v1/#audit-k8s-io-v1-Event).
 
 ## RT03 Runtime immutability
 

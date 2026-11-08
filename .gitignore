@@ -8,3 +8,13 @@
 # Local Python check output.
 __pycache__/
 *.pyc
+
+# Infrastructure state, plans and local account settings.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+*.tfvars.json
+crash.log
+crash.*.log

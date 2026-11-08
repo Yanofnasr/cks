@@ -2,8 +2,8 @@ CKS practice uses the following licenses:
 
 1. Learning material: CC BY 4.0
 
-   Markdown documents in the repository root, preparation/, labs/ and
-   solutions/, including their inline teaching examples, are licensed under
+   Markdown documents in the repository root, preparation/, labs/, solutions/
+   and infrastructure/, including their inline teaching examples, are licensed under
    Creative Commons Attribution 4.0 International.
 
    See licenses/CC-BY-4.0.txt and
@@ -15,8 +15,10 @@ CKS practice uses the following licenses:
 
 2. Original fixtures, reference manifests and validation code: MIT
 
-   Non-Markdown files under labs/fixtures/ and solutions/, files under
-   scripts/, tests/ and .github/workflows/, and .gitignore are licensed under
+   Non-Markdown files under labs/fixtures/, labs/environments/ and solutions/,
+   non-Markdown files under infrastructure/, files under scripts/, tests/
+   and .github/workflows/, .gitignore and
+   .yamllint.yml are licensed under
    the MIT License in licenses/MIT.txt.
 
    This includes deliberately insecure or synthetic training fixtures;

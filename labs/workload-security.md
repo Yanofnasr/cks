@@ -43,6 +43,14 @@ Pod security fields usually require replacement. Delete only `cks-lab/demo`, wai
 
 **Prove it:** the Pod becomes Ready; `id` reports the expected identity; `/proc/1/status` shows no effective capabilities and `NoNewPrivs: 1`; the root mount is read-only; a write to `/tmp` succeeds. The existing healthy `client` can still fetch the Pod's IP on port 8080. A root-filesystem write must fail, and the usual ServiceAccount token path must be absent.
 
+Run the independent verifier before cleanup, using the lab context selected during setup:
+
+```bash
+python3 scripts/lab.py --context "$LAB_CONTEXT" verify MW02
+```
+
+Keep this proof from the deliberately incomplete starter as the hardening prerequisite for CAP01. The capstone begins with already-hardened shared witnesses and checks that their controls survive the combined changes.
+
 **Reset:** delete `cks-lab/demo`. Keep your answer in `work/demo.yaml` for RT03, or reapply the original starter for a fresh attempt.
 
 ## MW03 Secrets and encryption rotation

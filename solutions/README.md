@@ -102,7 +102,7 @@ DEMO_IP=$(kubectl -n cks-lab get pod demo -o jsonpath='{.status.podIP}')
 kubectl -n cks-lab exec client -- wget -qO- -T 3 "http://$DEMO_IP:8080/"
 ```
 
-The command above is the IPv4 form. Confirm the app remains healthy after the negative probes. The writable volume does not make the root writable, and root immutability does not make that volume immutable. RT03 explores the separate data-volume controls.
+The command above is the IPv4 form. Confirm the app remains healthy after the negative probes. The writable volume does not make the root writable, and root immutability does not make that volume immutable. RT03 explores the separate data-volume controls. Before cleanup, you can run `python3 scripts/lab.py --context "$LAB_CONTEXT" verify MW02`.
 
 Clean up with `kubectl -n cks-lab delete pod demo`. Keep a copy in `work/` if continuing to RT03.
 

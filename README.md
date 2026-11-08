@@ -31,7 +31,7 @@ flowchart LR
 
 The loop builds understanding as well as speed: solve, observe, explain, restore, then repeat with a deliberate variation.
 
-The first three drills have an independent verifier:
+The first three drills have independent verifiers, with further checks for MW01 admission and CS06 three-tier networking:
 
 ```bash
 python3 scripts/lab.py --context "$LAB_CONTEXT" preflight

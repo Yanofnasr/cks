@@ -15,22 +15,24 @@ The recorded local run used the exact node image digest in [kind.yaml](../labs/e
 | Check | Observed scope |
 |---|---|
 | Preflight and shared baseline | Ready nodes, required permissions, all five working witnesses |
+| Verification context | Registered cluster identity accepted; missing or incorrect external UID and a changed local cluster UID rejected before verification; an external acknowledgement did not override the changed record |
 | Local environment lifecycle | Automated create, ownership-aware status, baseline checks, learner acceptance sequence and deletion of the owned cluster and credentials |
 | CS01 | Correct policy passes; absent policy and overly broad ingress fail; independent ingress witness and restored isolation after temporary-policy cleanup |
 | CH02 core | Correct Pod-reader identity passes; added Secret-list and named-Secret-read grants fail; token absence and effective permission rules checked |
 | MW02 | Correct configuration and actual runtime restrictions pass; a writable-root variant fails; HTTP and the writable exception remain functional |
-| CS06 traffic matrix | All seven baseline paths work; intended policies reject all five forbidden paths; the new witness detects overly broad backend ingress; baseline and namespace cleanup verified |
+| CS06 traffic matrix | Seven-path verifier accepts the intended rules, checks unrestricted egress and healthy positive witnesses, and rejects broad backend ingress and a database namespace leak; baseline and namespace cleanup verified |
+| MW01 admission | Restricted policy pinned to the server minor; compliant and noncompliant server dry runs distinguish admission outcomes and namespace scope; baseline-only enforcement and restrictions leaking into the other namespace are rejected |
 | SC06 native admission | Allowed and forbidden ordinary, init, ephemeral and image-volume references; absent optional fields, ordinary volumes and unaffected namespace; named rejection required after propagation |
 | SC01 compiled variation | Both Dockerfiles build and serve HTTP; multi-stage image runs as 65532:65532 with a read-only root, dropped capabilities and no-new-privileges; shell absent |
 | Gatekeeper decision logic | Eight OPA 1.22.2 tests evaluate the shipped Rego decisions against allowed and prohibited inputs |
 
-The native cluster checks are reproducible with [cluster_smoke.py](../tests/cluster_smoke.py) on a separate empty kind cluster. They clean up their namespaces and admission policy. CS06 additionally used the written seven-path matrix and broadened-backend counterexample. The compiled-image checks follow the [CI workflow](../.github/workflows/check.yml), using Go builder digest `sha256:87c65a688975c0b1d4585d204874c45ca78354670e3a5f11368c5a492303d696` for the recorded run. The source used for the automated run is identified by SHA-256:
+The native cluster checks are reproducible with [cluster_smoke.py](../tests/cluster_smoke.py) on a separate owned kind cluster with no practice namespaces. They cover all five verifiers and clean up their namespaces and admission policy. The compiled-image checks follow the [CI workflow](../.github/workflows/check.yml), using Go builder digest `sha256:87c65a688975c0b1d4585d204874c45ca78354670e3a5f11368c5a492303d696` for the recorded run. The source used for the automated run is identified by SHA-256:
 
 | File | SHA-256 |
 |---|---|
-| `scripts/lab.py` | `c910eece491339e5b9533bafb46f4b7e5e5e08b02932fd823cdd02454552e494` |
+| `scripts/lab.py` | `226227517886db6d72bb5f66f90b8050459c9894ede796e3ed33e489384a9c6f` |
 | `scripts/environment.py` | `9a0af8795eb78c858da7420915da4aab3f75ffb7159449e7b2021152a353a98d` |
-| `tests/cluster_smoke.py` | `82549a203aeddb559764f3314556100ba0627408077eecc34c2e056896bc38c7` |
+| `tests/cluster_smoke.py` | `a8ed748d99e99c8ab67404bdbabd87e69894b39daec6f324f3cc0eeb8f12ab6c` |
 | `labs/environments/kind.yaml` | `88f5fab0531db4521576c54bb0cc8061f19c5aff4e944386371e083266ca2d3a` |
 
 Re-run the relevant checks whenever the implementation, profile or component versions change. The table names the specific operations demonstrated by each result.
@@ -67,7 +69,18 @@ Run each verifier after solving that drill and before its reset. Preflight reads
 | FAIL | 1 | A requirement failed; inspect the reported observation, fix the solution and retry |
 | BLOCKED | 2 | A prerequisite, access check or trustworthy witness is missing; fix the environment before interpreting the result |
 
-The automated checker evaluates CS01, CH02 core and MW02 using the standard fixture names, labels and port. Use the written manual proof for independently renamed or ported variations. CH02 checks effective resource permissions in the two practice namespaces, including grants restricted to named resources; standard self-review APIs and public ClusterTrustBundle reads remain permitted. An authorizer that cannot return complete rules produces BLOCKED. Record the exercise part and the observed denial reason, then complete its cleanup. If interrupted, inspect the reported temporary resources and remove only those created by the verifier after confirming ownership.
+The first-session checks evaluate CS01, CH02 core and MW02 using the standard fixture names, labels and port. Use the written manual proof for independently renamed or ported variations. CH02 checks effective resource permissions in the two practice namespaces, including grants restricted to named resources; standard self-review APIs and public ClusterTrustBundle reads remain permitted. An authorizer that cannot return complete rules produces BLOCKED. Record the exercise part and the observed denial reason, then complete its cleanup. If interrupted, inspect the reported temporary resources and remove only those created by the verifier after confirming ownership.
+
+## Further drill verifiers
+
+After completing the first session, use these checks before resetting their respective exercises:
+
+```bash
+python3 scripts/lab.py --context "$LAB_CONTEXT" verify MW01
+python3 scripts/lab.py --context "$LAB_CONTEXT" verify CS06
+```
+
+The same cluster identity requirements and result codes apply. MW01 checks the PSA labels, acceptance of a compliant Pod, rejection of a Restricted violation and acceptance of that violation in the unaffected namespace. It uses server-side dry runs, so the drill's actual running-workload proof remains separate. CS06 checks all seven traffic paths against healthy backend and database witnesses. Complete its selector and additive-policy experiments as written; the verifier assesses the restored final policy.
 
 ## Record a reproducible attempt
 
@@ -84,3 +97,5 @@ Use [Progress](PROGRESS.md) for personal records. Contributors should submit a c
 ## Repository checks
 
 Run the checks in [Contributing](../CONTRIBUTING.md#validate-a-contribution). Syntax and schema checks validate file and resource structure; unit tests exercise program behaviour; cluster checks observe actual admission, traffic and runtime outcomes. Keep these evidence types distinct when recording a result. Intentionally insecure fixtures are training inputs and remain clearly identified when interpreting scanner findings.
+
+The complete local Python suite passed 104 tests, with four additional smoke-runner contract tests.

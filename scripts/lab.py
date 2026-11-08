@@ -167,10 +167,10 @@ output=$(wget -qO- -T 3 "$1" 2>&1)
 if [ "$?" -eq 0 ]; then printf 'LAB_OK\\n%s\\n' "$output"; else printf 'LAB_DENIED\\n%s\\n' "$output"; fi'''
 
 
-def http(kube, pod, url):
+def http(kube, pod, url, expected_body="cks-practice"):
     output = kube.exec(pod, HTTP_PROBE, url)
     if output.startswith("LAB_OK\n"):
-        return "ok" if output.split("\n", 1)[1].strip() == "cks-practice" else "wrong-page"
+        return "ok" if output.split("\n", 1)[1].strip() == expected_body else "wrong-page"
     if output.startswith("LAB_DENIED\n"):
         if "server returned error: HTTP" in output:
             return "http-error"
@@ -179,8 +179,8 @@ def http(kube, pod, url):
     raise Blocked("HTTP witness failed without a recognized connection result; check wget and networking")
 
 
-def traffic(kube, pod, url, allowed, label):
-    result = http(kube, pod, url)
+def traffic(kube, pod, url, allowed, label, expected_body="cks-practice"):
+    result = http(kube, pod, url, expected_body)
     require(result == ("ok" if allowed else "denied"), label)
 
 
@@ -357,6 +357,75 @@ def mw02(kube, pods):
             "hardened application still serves the expected page")
 
 
+def mw01(kube, pods=None):
+    version = kube.decode(kube.run("version", "-o", "json").stdout).get("serverVersion", {}).get("gitVersion", "")
+    parts = version.removeprefix("v").split(".")
+    if not version.startswith("v") or len(parts) < 3 or not all(part.isdigit() for part in parts[:2]):
+        raise Blocked("server minor version could not be detected for the Pod Security pin")
+    pin = "v" + ".".join(parts[:2])
+    labels = kube.get("namespace", "cks-lab").get("metadata", {}).get("labels", {})
+    prefix = "pod-security.kubernetes.io/"
+    require(labels.get(prefix + "enforce") == "restricted" and labels.get(prefix + "enforce-version") == pin,
+            f"cks-lab enforces Restricted pinned to server minor {pin}")
+    require(all(labels.get(prefix + mode) in {"privileged", "baseline", "restricted"} for mode in ("audit", "warn")),
+            "audit and warn modes are deliberately configured")
+    probe = {"apiVersion": "v1", "kind": "Pod", "metadata": {"namespace": "cks-lab"},
+             "spec": {"automountServiceAccountToken": False, "restartPolicy": "Never",
+                      "securityContext": {"runAsNonRoot": True, "runAsUser": 1000,
+                                          "seccompProfile": {"type": "RuntimeDefault"}},
+                      "containers": [{"name": "probe", "image": "docker.io/library/busybox:1.37",
+                                      "command": ["sleep", "60"], "securityContext": {
+                                          "allowPrivilegeEscalation": False, "readOnlyRootFilesystem": True,
+                                          "capabilities": {"drop": ["ALL"]}}}]}}
+    for phase in ("compliant", "noncompliant", "other namespace"):
+        probe["metadata"]["name"] = "mw01-" + uuid.uuid4().hex[:12]
+        probe["metadata"]["namespace"] = "cks-other" if phase == "other namespace" else "cks-lab"
+        probe["spec"]["containers"][0]["securityContext"]["allowPrivilegeEscalation"] = phase != "compliant"
+        result = kube.run("create", "--dry-run=server", "-f", "-", "-o", "json", document=probe, check=False)
+        if phase == "noncompliant":
+            if result.returncode == 0:
+                raise Failed("noncompliant Pod is denied in cks-lab")
+            if (f'violates PodSecurity "restricted:{pin}"' not in result.stderr
+                    or "allowPrivilegeEscalation != false" not in result.stderr):
+                raise Blocked("rejection was not the expected Restricted privilege-escalation denial")
+            print("PASS: Restricted admission rejects the single-field privilege-escalation violation")
+        elif result.returncode:
+            if phase == "other namespace" and "violates PodSecurity" in result.stderr:
+                raise Failed("cks-other must still admit the same noncompliant Pod")
+            raise Blocked(f"{phase} admission control failed; check API access, permissions and other admission policies")
+        else:
+            print(f"PASS: {phase} Pod passes server admission without being persisted")
+
+
+def cs06(kube, pods=None):
+    fixtures = [("cks-tiers", "frontend", "frontend"), ("cks-tiers", "backend", "backend"),
+                ("cks-tiers", "intruder", "intruder"), ("cks-data", "database", "database"),
+                ("cks-data", "frontend-witness", "frontend"), ("cks-data", "backend-witness", "backend")]
+
+    def refresh():
+        return {(ns, name): workload(kube, name, ns, ("tier", tier)) for ns, name, tier in fixtures}
+
+    pods = refresh()
+    for namespace in ("cks-tiers", "cks-data"):
+        policies = kube.get("networkpolicies", namespace=namespace).get("items", [])
+        require(not any("Egress" in p.get("spec", {}).get("policyTypes", ["Egress"] if "egress" in p.get("spec", {}) else [])
+                        for p in policies), f"{namespace} policies keep egress unrestricted for independent ingress checks")
+    flows = [("cks-tiers", "frontend", "cks-tiers", "backend", True),
+             ("cks-tiers", "backend", "cks-data", "database", True),
+             ("cks-tiers", "intruder", "cks-tiers", "backend", False),
+             ("cks-data", "frontend-witness", "cks-tiers", "backend", False),
+             ("cks-tiers", "frontend", "cks-data", "database", False),
+             ("cks-tiers", "intruder", "cks-data", "database", False),
+             ("cks-data", "backend-witness", "cks-data", "database", False)]
+    for ns, source, target_ns, target, allowed in flows:
+        traffic(kube, pods[ns, source], http_url(pods[target_ns, target]["status"].get("podIP", "")), allowed,
+                f"{ns}/{source} to {target_ns}/{target} is {'allowed' if allowed else 'denied'}", target + "-witness")
+    pods = refresh()
+    for ns, source, target_ns, target, allowed in flows[:2]:
+        traffic(kube, pods[ns, source], http_url(pods[target_ns, target]["status"].get("podIP", "")), allowed,
+                f"{target_ns}/{target} remains healthy after the denied requests", target + "-witness")
+
+
 def preflight(kube):
     metadata = cluster_identity(kube)
     print(f"INFO: context={kube.context} cluster UID={metadata['uid']}")
@@ -417,7 +486,7 @@ def preflight(kube):
 
 
 def main(argv=None):
-    checks = {"CS01": cs01, "CH02": ch02, "MW02": mw02}
+    checks = {"CS01": cs01, "CS06": cs06, "CH02": ch02, "MW01": mw01, "MW02": mw02}
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--context", required=True, help="explicit disposable-cluster context")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -437,7 +506,7 @@ def main(argv=None):
             preflight(kube)
         else:
             verify_identity(kube, args.external_lab_uid)
-            pods = baseline(kube)
+            pods = baseline(kube) if args.drill in {"CS01", "CH02", "MW02"} else None
             checks[args.drill](kube, pods)
         print("PASS: " + ("preflight inventory; next run the drill's behavioral checks" if args.command == "preflight" else args.drill))
         return 0

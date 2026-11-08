@@ -316,6 +316,14 @@ kubectl -n cks-data delete networkpolicy cs06-database-reopen
 
 Both frontend requests succeed while the extra allow policy exists, even after reapplying the original default-deny and narrow allow rules. Allowed traffic is the union of applicable policies; a default-deny policy does not override another allowance. After deleting `cs06-database-reopen`, rerun all seven probes and verify the correct-policy column. Confirm all Pods remain Ready. Compare your answer with the [worked policy](../solutions/three-tier-policy.yaml) after attempting it.
 
+Run the independent seven-path check before cleanup, using the [lab identity selected during setup](../preparation/LAB-SAFETY.md#select-the-cluster-deliberately):
+
+```bash
+python3 scripts/lab.py --context "$LAB_CONTEXT" verify CS06
+```
+
+The verifier checks the restored traffic matrix. Keep the selector and additive-policy experiments above as separate evidence of why the rules behave that way.
+
 **Reset:** delete only the two namespaces created for this drill:
 
 ```bash

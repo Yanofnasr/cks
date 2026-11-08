@@ -91,7 +91,7 @@ def smoke(context, external_lab_uid=None):
             time.sleep(2)
 
     # Refuse existing work before creating any fixture or policy.
-    for resource, names in [("namespace", ["cks-lab", "cks-other"]),
+    for resource, names in [("namespace", ["cks-lab", "cks-other", "cks-tiers", "cks-data"]),
                             ("validatingadmissionpolicy", ["cks-allowed-registries"]),
                             ("validatingadmissionpolicybinding", ["cks-allowed-registries"])]:
         if kubectl("get", resource, *names, "--ignore-not-found", "-o", "name").strip():
@@ -110,6 +110,32 @@ def smoke(context, external_lab_uid=None):
         kubectl("apply", "-f", "solutions/network-policy.yaml")
         verify("CS01")
         kubectl("delete", "-f", "solutions/network-policy.yaml")
+
+        kubectl("create", "-f", "labs/fixtures/three-tier.yaml")
+        for namespace in ("cks-tiers", "cks-data"):
+            kubectl("wait", "-n", namespace, "--for=condition=Ready", "pod", "--all", "--timeout=120s")
+        addresses = {name: json.loads(kubectl("get", "pod", name, "-n", namespace, "-o", "json"))["status"]["podIP"]
+                     for namespace, name in [("cks-tiers", "backend"), ("cks-data", "database")]}
+        for namespace, source, target in [("cks-tiers", "frontend", "backend"), ("cks-tiers", "intruder", "backend"),
+                                          ("cks-data", "frontend-witness", "backend"), ("cks-tiers", "backend", "database"),
+                                          ("cks-tiers", "frontend", "database"), ("cks-tiers", "intruder", "database"),
+                                          ("cks-data", "backend-witness", "database")]:
+            response = kubectl("exec", source, "-n", namespace, "--", "wget", "-qO-", "-T", "3", lab.http_url(addresses[target]))
+            if response.strip() != target + "-witness":
+                raise RuntimeError("Three-tier baseline did not serve the expected witness page.")
+        verify("CS06", 1, "FAIL: cks-tiers/intruder to cks-tiers/backend is denied")
+        kubectl("apply", "-f", "solutions/three-tier-policy.yaml")
+        verify("CS06")
+        kubectl("patch", "networkpolicy", "cs06-backend", "-n", "cks-tiers", "--type=json",
+                "-p", json.dumps([{"op": "replace", "path": "/spec/ingress/0/from/0/podSelector", "value": {}}]))
+        verify("CS06", 1, "FAIL: cks-tiers/intruder to cks-tiers/backend is denied")
+        kubectl("apply", "-f", "solutions/three-tier-policy.yaml")
+        verify("CS06")
+        kubectl("patch", "networkpolicy", "cs06-database", "-n", "cks-data", "--type=json",
+                "-p", json.dumps([{"op": "replace", "path": "/spec/ingress/0/from/0/namespaceSelector", "value": {}}]))
+        verify("CS06", 1, "FAIL: cks-data/backend-witness to cks-data/database is denied")
+        kubectl("apply", "-f", "solutions/three-tier-policy.yaml")
+        verify("CS06")
 
         kubectl("apply", "-f", "solutions/serviceaccount.yaml")
         kubectl("wait", "-n", "cks-lab", "--for=condition=Ready", "pod/ch02-client", "--timeout=120s")
@@ -200,12 +226,27 @@ def smoke(context, external_lab_uid=None):
             kubectl("replace", "--raw", "/api/v1/namespaces/cks-lab/pods/demo/ephemeralcontainers?dryRun=All", "-f", "-",
                     document=live, expected=0 if allowed else 1,
                     reason="" if allowed else "Ephemeral container images must use an allowed registry prefix.")
-        print("PASS: correct answers, deliberately incorrect answers and image-volume admission.")
+        server = json.loads(kubectl("version", "-o", "json"))["serverVersion"]["gitVersion"]
+        pin = ".".join(server.split(".")[:2])
+        verify("MW01", 1, "FAIL: cks-lab enforces Restricted pinned to server minor")
+        kubectl("label", "namespace", "cks-lab", "pod-security.kubernetes.io/enforce=restricted",
+                f"pod-security.kubernetes.io/enforce-version={pin}", "pod-security.kubernetes.io/audit=restricted",
+                "pod-security.kubernetes.io/warn=restricted", "--overwrite")
+        verify("MW01")
+        kubectl("label", "namespace", "cks-lab", "pod-security.kubernetes.io/enforce=baseline", "--overwrite")
+        verify("MW01", 1, "FAIL: cks-lab enforces Restricted pinned to server minor")
+        kubectl("label", "namespace", "cks-lab", "pod-security.kubernetes.io/enforce=restricted", "--overwrite")
+        kubectl("label", "namespace", "cks-other", "pod-security.kubernetes.io/enforce=restricted",
+                f"pod-security.kubernetes.io/enforce-version={pin}", "--overwrite")
+        verify("MW01", 1, "FAIL: cks-other must still admit the same noncompliant Pod")
+        kubectl("label", "namespace", "cks-other", "pod-security.kubernetes.io/enforce-", "pod-security.kubernetes.io/enforce-version-")
+        verify("MW01")
+        print("PASS: correct answers, deliberately incorrect answers, Pod Security and image-volume admission.")
     finally:
         active_error = sys.exc_info()[1]
         cleanup_errors = []
         for command in [("delete", "-f", "labs/fixtures/registry-policy.yaml", "--ignore-not-found"),
-                        ("delete", "namespace", "cks-lab", "cks-other", "--ignore-not-found", "--wait=true", "--timeout=120s")]:
+                        ("delete", "namespace", "cks-lab", "cks-other", "cks-tiers", "cks-data", "--ignore-not-found", "--wait=true", "--timeout=120s")]:
             try:
                 kubectl(*command)
             except (OSError, RuntimeError, subprocess.TimeoutExpired) as error:

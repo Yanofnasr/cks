@@ -23,6 +23,14 @@ Change the copied Pod's name to `psa-probe`. In this owned namespace, first set 
 3. The original is still accepted by a dry run targeting `cks-other` after changing its manifest namespace.
 4. Existing Pods are not retroactively evicted just because the namespace policy changed. Verify new admissions separately.
 
+Run the independent admission check before cleanup, using the [lab identity selected during setup](../preparation/LAB-SAFETY.md#select-the-cluster-deliberately):
+
+```bash
+python3 scripts/lab.py --context "$LAB_CONTEXT" verify MW01
+```
+
+It checks the namespace labels and uses server-side dry runs to distinguish an allowed Pod from a Restricted violation, including the unaffected namespace. Complete the running-workload proof above separately.
+
 **Reset:** delete the probe you actually created and remove only the Pod Security labels you added, or restore the shared baseline as described in the environment guide. Preserve any original labels if this was not a fresh namespace.
 
 ## MW02 Workload hardening

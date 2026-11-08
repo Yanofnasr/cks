@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: MIT
+# Use an existing dedicated training project and a version returned by get-server-config.
+project_id         = "your-training-project"
+zone               = "europe-west1-b"
+name               = "cks-practice"
+kubernetes_version = "REPLACE_WITH_OFFERED_GKE_VERSION"
+admin_cidr         = "203.0.113.10/32" # Replace with your actual public IPv4 address.
+expires_on         = "2026-11-15"    # Replace with your planned teardown date.

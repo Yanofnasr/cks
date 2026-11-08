@@ -1,0 +1,9 @@
+# Replace these public identifiers and example address before planning.
+subscription_id       = "11111111-1111-1111-1111-111111111111"
+tenant_id             = "22222222-2222-2222-2222-222222222222"
+admin_group_object_ids = ["33333333-3333-3333-3333-333333333333"]
+name                  = "cks-practice"
+location              = "westeurope"
+kubernetes_version    = "1.37.0"
+admin_cidr            = "203.0.113.10/32"
+expires_on            = "2026-12-01"

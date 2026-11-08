@@ -1,0 +1,7 @@
+project_id = "replace-with-training-project"
+zone       = "europe-west1-b"
+name       = "cks-kubeadm"
+admin_cidr = "203.0.113.10/32" # Replace with your actual stable public address.
+expires_on = "2030-01-01"     # Choose your real cleanup date.
+# Supply the public key using TF_VAR_ssh_public_key or replace this value.
+# ssh_public_key = "ssh-ed25519 REPLACE_WITH_YOUR_PUBLIC_KEY"

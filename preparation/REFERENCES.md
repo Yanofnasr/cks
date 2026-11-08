@@ -2,7 +2,15 @@
 
 ## Exam baseline
 
-Target **Kubernetes 1.37**, **two hours**, **67% passing score**, with a **prior CKA pass** required. Version and rules were checked against the live Linux Foundation pages in **November 2026**; confirm them again before the exam.
+The exam allows **two hours**, requires a **67% passing score** and a **prior CKA pass**. Keep these three version references separate:
+
+| Reference | Version | Source |
+|---|---|---|
+| Workbook local environment | Kubernetes **1.37.0** | Pinned node image in [kind.yaml](../labs/environments/kind.yaml) |
+| Published curriculum | CKS **v1.37** | [CNCF curriculum PDF](https://github.com/cncf/curriculum/blob/main/CKS_Curriculum%20v1.37.pdf) |
+| Published exam environment | Kubernetes **1.37** | [Linux Foundation candidate FAQ](https://docs.linuxfoundation.org/tc-docs/certification/faq-cka-ckad-cks) and [exam page](https://training.linuxfoundation.org/certification/certified-kubernetes-security-specialist/) |
+
+The exam version and rules were checked against the live Linux Foundation pages in **November 2026**. Check them again before booking and before the exam. A new curriculum PDF does not by itself establish that the exam environment has changed.
 
 - [CKS technical instructions](https://docs.linuxfoundation.org/tc-docs/certification/important-instructions-cks)
 - [CKS candidate FAQ](https://docs.linuxfoundation.org/tc-docs/certification/faq-cka-ckad-cks)

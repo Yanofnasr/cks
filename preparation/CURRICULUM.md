@@ -1,6 +1,6 @@
 # Curriculum coverage
 
-This map uses the [CNCF CKS 1.37 curriculum](https://github.com/cncf/curriculum/blob/main/CKS_Curriculum%20v1.37.pdf) and [Linux Foundation exam page](https://training.linuxfoundation.org/certification/certified-kubernetes-security-specialist/), checked in **November 2026**. Objective descriptions are summarized below. They establish scope, not the frequency, wording or selection of real exam tasks.
+This map uses the published [CNCF CKS 1.37 curriculum](https://github.com/cncf/curriculum/blob/main/CKS_Curriculum%20v1.37.pdf) for objective groups and weights, checked in **November 2026** against the [Linux Foundation exam page](https://training.linuxfoundation.org/certification/certified-kubernetes-security-specialist/). [References](REFERENCES.md#exam-baseline) tracks the published exam environment separately from this curriculum and the pinned local environment. Objective descriptions are summarized below. They establish scope, not the frequency, wording or selection of real exam tasks.
 
 ## Cluster setup, 15%
 

@@ -57,7 +57,7 @@ python3 scripts/environment.py delete --name cks-practice
 | Runtime security | [Falco, auditing, immutability and incident response](labs/runtime-security.md) |
 | Mixed practice | [45-minute capstone](labs/capstone.md) |
 
-The target baseline is **Kubernetes 1.37**. See the [curriculum map](preparation/CURRICULUM.md) for objective coverage and [References](preparation/REFERENCES.md) for current exam rules, authoritative technical guidance and optional practice environments.
+The local profile pins **Kubernetes 1.37.0**. See the [curriculum map](preparation/CURRICULUM.md) for objective coverage and [References](preparation/REFERENCES.md#exam-baseline) for the separately tracked curriculum and exam versions, current rules, technical guidance and optional practice environments.
 
 The [course-practice map](preparation/CURRICULUM.md#killer-shell-practice-coverage) connects Killer Shell's practical topics to local exercises: three-tier traffic rules, certificate issuance, API-server recovery, node restrictions, container namespaces, multi-stage images, Gatekeeper and an actual ImagePolicyWebhook backend. Use the local starting states and proof steps; browser scenarios are optional alternatives.
 

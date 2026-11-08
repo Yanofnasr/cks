@@ -137,7 +137,7 @@ References: [BOM CLI](https://kubernetes-sigs.github.io/bom/cli-reference/), [Tr
 
 **Environment:** a disposable Kubernetes cluster with the stable ValidatingAdmissionPolicy API available. Start with a fresh shared baseline so another exercise's policy cannot explain a rejection. Confirm that the `cks-allowed-registries` policy and binding names are available for this drill.
 
-**Start:** inspect [registry-policy.yaml](fixtures/registry-policy.yaml). It contains a policy and binding for Pods in namespaces labelled `cks-practice=admission`; only explicitly qualified `docker.io/` and `registry.k8s.io/` image references are allowed. Regular, init and ephemeral containers are considered.
+**Start:** inspect [registry-policy.yaml](fixtures/registry-policy.yaml). It contains a policy and binding for Pods in namespaces labelled `cks-practice=admission`; only explicitly qualified `docker.io/` and `registry.k8s.io/` image references are allowed. Regular, init and ephemeral containers and OCI image-volume references are considered. Ordinary volumes and absent optional container/volume fields must remain valid. Use the Kubernetes 1.37 baseline for the image-volume probe below.
 
 ```bash
 kubectl apply -f labs/fixtures/registry-policy.yaml
@@ -152,11 +152,58 @@ kubectl label namespace cks-lab cks-practice=admission --overwrite
 2. An unapproved regular-container image is rejected with this policy's message.
 3. An unapproved init-container image is rejected even when the main image is allowed.
 4. An ephemeral-container update using an unapproved image is rejected. Test the actual subresource update against a drill-owned running Pod; a CREATE-only test does not cover it.
-5. An otherwise valid unapproved-image Pod in unlabelled `cks-other` passes server-side dry run. Do not deploy or pull that image.
+5. An allowed image-volume reference passes, while a prohibited image-volume reference is rejected even when every container image is allowed.
+6. An otherwise valid unapproved-image Pod in unlabelled `cks-other` passes server-side dry run. Do not deploy or pull that image.
+
+For the volume check, use the fresh SC06 baseline without MW01's Restricted enforcement. The probe retains non-root and capability restrictions, but image volumes are not among the volume types listed by the [Restricted Pod Security Standard](https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted). These requests are admission-only; they do not mount or pull either artifact:
+
+```bash
+mkdir -p work/SC06
+cat > work/SC06/image-volume.yaml <<'EOF'
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sc06-image-volume
+  namespace: cks-lab
+spec:
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: client
+      image: docker.io/library/busybox:1.37
+      command: ["sleep", "3600"]
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: ["ALL"]
+      volumeMounts:
+        - name: artifact
+          mountPath: /artifact
+          readOnly: true
+  volumes:
+    - name: artifact
+      image:
+        reference: docker.io/library/busybox:1.37
+        pullPolicy: Never
+EOF
+kubectl create --dry-run=server -f work/SC06/image-volume.yaml
+sed 's|reference: docker.io/library/busybox:1.37|reference: example.invalid/lab/artifact:v1|' \
+  work/SC06/image-volume.yaml > work/SC06/image-volume-denied.yaml
+kubectl create --dry-run=server -f work/SC06/image-volume-denied.yaml
+```
+
+Expect acceptance followed by the policy's image-volume message. A cluster that does not recognize `volumes[].image`, or independently prohibits it, cannot validate this comparison; record that capability as blocked without weakening unrelated controls. Admission success alone does not prove the node runtime supports image volumes.
 
 For all probes, distinguish an admission-policy rejection from malformed YAML, PSA rejection, authorization failure or an existing Pod name. This registry policy does not verify signatures, image contents or ownership of every image in an allowed registry.
 
-**Extension:** use SC09 for a real ImagePolicyWebhook integration, including its backend-outage behavior. That exercise checks image-reference policy, not signatures. On a separately installed signature-verification admission service, repeat SC04's publisher/digest trust tests at admission time.
+Policy, binding and namespace-label changes propagate asynchronously. First wait until the prohibited regular-container probe receives this policy's named rejection, then record the full allowed/denied matrix. An early accepted request is not evidence that the policy has finished becoming active.
+
+**Extension:** use SC09 for a real ImagePolicyWebhook integration, including its backend-outage behavior. That plugin checks container image references, excludes image volumes, and does not verify signatures. On a separately installed signature-verification admission service, repeat SC04's publisher/digest trust tests at admission time.
 
 **Reset:** remove the `cks-practice` label you added and delete only the `cks-allowed-registries` binding and policy. Delete the drill's probe Pods. Do not delete all admission policies.
 
@@ -164,7 +211,7 @@ For all probes, distinguish an admission-policy rejection from malformed YAML, P
 
 Use a disposable cluster with a compatible, healthy Gatekeeper installation. This variation practices the course's actual ConstraintTemplate/Constraint/Rego workflow, rather than treating native CEL as the same tool. Finish the native-policy cleanup first so another policy cannot explain the rejection. Confirm the names below are unused.
 
-Inspect the original [template](../solutions/gatekeeper-template.yaml) and [constraint](../solutions/gatekeeper-constraint.yaml). They use a structural parameter schema, explicit registry prefixes ending in `/`, and all three container-image fields. Apply the template first, wait for its generated CRD, then apply the constraint:
+Inspect the original [template](../solutions/gatekeeper-template.yaml) and [constraint](../solutions/gatekeeper-constraint.yaml). They use a structural parameter schema, explicit registry prefixes ending in `/`, all three container-image fields and image-volume references. Apply the template first, wait for its generated CRD, then apply the constraint:
 
 ```bash
 kubectl apply -f solutions/gatekeeper-template.yaml
@@ -176,13 +223,13 @@ kubectl get constrainttemplate k8spracticeimages -o yaml
 kubectl apply -f solutions/gatekeeper-constraint.yaml
 ```
 
-Inspect template/constraint status for ingestion or Rego errors. The `spec.targets[].rego` example uses Gatekeeper's legacy Rego syntax; confirm support in the installed version. Repeat the allowed-image, rejected-main-image and rejected-init-image server-side dry runs in `cks-lab`, then prove that the same otherwise-valid request in `cks-other` is unaffected. The constraint's named rejection must be the reason for denial.
+Inspect template/constraint status for ingestion or Rego errors. The `spec.targets[].rego` example uses Gatekeeper's legacy Rego syntax; confirm support in the installed version. Repeat the allowed-image, rejected-main-image, rejected-init-image and image-volume server-side dry runs in `cks-lab`, then prove that the same otherwise-valid request in `cks-other` is unaffected. Pods without optional fields, and Pods using an ordinary volume such as `emptyDir`, must still be accepted. The constraint's named rejection must be the reason for denial.
 
 In a working copy, restrict the permitted prefixes further and show the changed result; restore the intended list afterward. Inspect the installed validating webhook's subresource rules before testing ephemeral-container updates. A template can inspect that field only when the controller actually receives the request. Record a routing gap instead of claiming enforcement from Rego text alone.
 
 Delete only `cks-gatekeeper-images` first, verify the previously rejected dry run is accepted again, then delete `k8spracticeimages`. Do not remove the Gatekeeper installation or other constraints. These examples check registry prefixes, not image signatures or contents.
 
-References: [ConstraintTemplates](https://open-policy-agent.github.io/gatekeeper/website/docs/constrainttemplates/), [Killer Shell admission-policy practice](https://github.com/killer-sh/cks-course-environment/tree/f10551265c2eb04c12a443afaa8500eb824530de/course-content/opa).
+References: [ConstraintTemplates](https://open-policy-agent.github.io/gatekeeper/website/docs/constrainttemplates/), [image volumes](https://kubernetes.io/docs/concepts/storage/volumes/#image), [Killer Shell admission-policy practice](https://github.com/killer-sh/cks-course-environment/tree/f10551265c2eb04c12a443afaa8500eb824530de/course-content/opa).
 
 ## SC07 Build provenance
 

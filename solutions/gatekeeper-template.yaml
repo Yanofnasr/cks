@@ -36,6 +36,11 @@ spec:
           image := input.review.object.spec.ephemeralContainers[_].image
         }
 
+        images[image] {
+          source := input.review.object.spec.volumes[_].image
+          image := object.get(source, "reference", "")
+        }
+
         allowed(image) {
           prefix := input.parameters.allowedPrefixes[_]
           startswith(image, prefix)

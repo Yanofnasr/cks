@@ -63,6 +63,8 @@ The basic checks above need no cluster access or registry publication. TLS tests
 
 CI also runs pinned YAML, Kubernetes schema and secret validators, builds and exercises the compiled images, and creates an isolated kind/Calico cluster. Binary downloads are checksum-verified. Schema checks cover the named Kubernetes resource files; kubeconfig, node configuration, Falco rules and controller-specific custom resources are handled separately. Deliberately insecure training fixtures still require valid syntax and schemas.
 
+CI's Python tools install from [requirements-ci.txt](requirements-ci.txt), with every dependency pinned and wheel hashes required. Keep the full lock current when updating those tools. To reproduce the install, run `python -m pip install --require-hashes --only-binary=:all: -r requirements-ci.txt` inside a Python 3.11 or 3.12 virtual environment on Linux amd64.
+
 Infrastructure changes also run formatting, provider-schema validation and mock-provider plans with both Terraform and OpenTofu. Keep both engine lockfiles with each profile and test changes without cloud credentials using the [infrastructure contributor checks](infrastructure/README.md#check-changes-without-creating-cloud-resources). Test lifecycle ownership and bootstrap credential handling at their command boundaries. Render changed Mermaid diagrams and keep their accompanying text useful without the diagram.
 
 To repeat the cluster checks, create a **separate owned** environment with `python3 scripts/environment.py create --name cks-ci`. After successful creation, run the printed kubeconfig/context exports. Setup has checked the starter baseline; remove only that baseline so the smoke tests can create their own resources:

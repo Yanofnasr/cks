@@ -18,7 +18,7 @@ CKS practice uses the following licenses:
    Non-Markdown files under labs/fixtures/, labs/environments/ and solutions/,
    non-Markdown files under infrastructure/, files under scripts/, tests/
    and .github/workflows/, .gitignore and
-   .yamllint.yml are licensed under
+   .yamllint.yml and requirements-ci.txt are licensed under
    the MIT License in licenses/MIT.txt.
 
    This includes deliberately insecure or synthetic training fixtures;

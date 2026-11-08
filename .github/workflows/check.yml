@@ -31,7 +31,10 @@ jobs:
         run: go test labs/fixtures/image-go/main.go labs/fixtures/image-go/main_test.go
       - name: Install pinned manifest and secret validators
         run: |
-          python3 -m pip install --disable-pip-version-check yamllint==1.35.1
+          python3.12 -m venv "$RUNNER_TEMP/ci-python"
+          "$RUNNER_TEMP/ci-python/bin/python" -m pip install --disable-pip-version-check \
+            --require-hashes --only-binary :all: -r requirements-ci.txt
+          echo "$RUNNER_TEMP/ci-python/bin" >> "$GITHUB_PATH"
           mkdir -p "$RUNNER_TEMP/validators"
           cd "$RUNNER_TEMP/validators"
           curl --fail --location --retry 3 --output kubeconform.tar.gz \

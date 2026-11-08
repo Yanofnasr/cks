@@ -98,4 +98,4 @@ Use [Progress](PROGRESS.md) for personal records. Contributors should submit a c
 
 Run the checks in [Contributing](../CONTRIBUTING.md#validate-a-contribution). Syntax and schema checks validate file and resource structure; unit tests exercise program behaviour; cluster checks observe actual admission, traffic and runtime outcomes. Keep these evidence types distinct when recording a result. Intentionally insecure fixtures are training inputs and remain clearly identified when interpreting scanner findings.
 
-The complete local Python suite passed 104 tests, with four additional smoke-runner contract tests.
+The CI Python dependency lock was installed into fresh Linux x86_64 environments on Python 3.11 and 3.12. Dependency consistency, YAML lint and the eight Rego cases passed in both; an intentionally incorrect package hash was rejected. The complete local Python suite passed 104 tests, with four additional smoke-runner contract tests.

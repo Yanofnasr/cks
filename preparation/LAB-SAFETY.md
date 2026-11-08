@@ -26,6 +26,7 @@ umask 077
 mkdir -p work
 export KUBECONFIG="$PWD/work/kubeconfig"
 kubectl config current-context
+export LAB_CONTEXT="$(kubectl config current-context)"
 kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}'
 kubectl get nodes -o wide
 kubectl version

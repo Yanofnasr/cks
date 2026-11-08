@@ -24,14 +24,101 @@ kubectl -n cks-other exec client -- wget -qO- -T 3 http://api.cks-lab.svc:8080/
 **Prove:** the first probe above succeeds, while the other two fail. The local client's request to `api.cks-other.svc:8080` also fails, while the `cks-other` client still reaches its own API. Verify name resolution separately:
 
 ```bash
-kubectl -n cks-lab exec client -- nslookup api.cks-lab.svc
+kubectl -n cks-lab exec client -- cat /etc/resolv.conf
+DNS_SUFFIX=cluster.local # Use the suffix after cks-lab.svc. in the search line.
+kubectl -n cks-lab exec client -- nslookup "api.cks-lab.svc.$DNS_SUFFIX."
 kubectl -n cks-other exec client -- wget -qO- -T 3 http://api:8080/
 kubectl -n cks-lab get networkpolicy
 ```
 
+Use the actual DNS suffix: BusyBox `nslookup` does not expand dotted `.svc` names in the same way as the HTTP client's resolver. A partial-name lookup can return NXDOMAIN even when HTTP name resolution works.
+
 Repeat a denied probe against the server's current Pod IP to distinguish a connection denial from a DNS error. Confirm the server is still Ready and the permitted probe still succeeds. Explain why NetworkPolicies are additive and why both the source's egress and destination's ingress must allow this flow.
 
-**Reset:** delete only the four `cs01-*` policies you created, or use the shared namespace reset. Repeat the original successful probes before the next drill.
+### Independent ingress check
+
+The intruder's own egress denial can hide an API ingress rule that admits every local Pod. Test ingress separately by briefly allowing only the intruder's egress to the two fixture APIs on TCP 8080. The unaffected `cks-other/api` is the positive control proving that this temporary allowance is active. First check that the temporary policy name is unused:
+
+```bash
+kubectl -n cks-lab get networkpolicy cs01-ingress-probe --ignore-not-found
+```
+
+Proceed only if the command succeeds without returning a policy. Do not adopt or remove an existing policy with that name. Create the temporary allowance:
+
+```bash
+kubectl -n cks-lab create -f - <<'YAML'
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cs01-ingress-probe
+spec:
+  podSelector:
+    matchLabels:
+      role: intruder
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: cks-lab
+      podSelector:
+        matchLabels:
+          app: api
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: cks-other
+      podSelector:
+        matchLabels:
+          app: api
+    ports:
+    - protocol: TCP
+      port: 8080
+YAML
+```
+
+Continue only after creation succeeds. Verify both APIs and the intruder are Ready, then capture the current addresses. Run the requests individually:
+
+```bash
+kubectl -n cks-lab wait --for=condition=Ready pod/api pod/intruder --timeout=120s
+kubectl -n cks-other wait --for=condition=Ready pod/api --timeout=120s
+CS01_API_IP=$(kubectl -n cks-lab get pod api -o jsonpath='{.status.podIP}')
+case "$CS01_API_IP" in
+  *:*) CS01_API_URL="http://[$CS01_API_IP]:8080/" ;;
+  *) CS01_API_URL="http://$CS01_API_IP:8080/" ;;
+esac
+CS01_OTHER_IP=$(kubectl -n cks-other get pod api -o jsonpath='{.status.podIP}')
+case "$CS01_OTHER_IP" in
+  *:*) CS01_OTHER_URL="http://[$CS01_OTHER_IP]:8080/" ;;
+  *) CS01_OTHER_URL="http://$CS01_OTHER_IP:8080/" ;;
+esac
+kubectl -n cks-lab exec intruder -- wget -qO- -T 3 "$CS01_OTHER_URL"
+kubectl -n cks-lab exec client -- wget -qO- -T 3 "$CS01_API_URL"
+kubectl -n cks-lab exec intruder -- wget -qO- -T 3 "$CS01_API_URL"
+kubectl -n cks-lab exec intruder -- wget -qO- -T 3 "$CS01_OTHER_URL"
+kubectl -n cks-lab exec client -- wget -qO- -T 3 "$CS01_API_URL"
+```
+
+Expect success, success, a connection denial, success, then success. Do not interpret the internal denial until the intruder's request to `cks-other/api` succeeds: if the temporary egress rule has not converged, both requests can still fail. If that positive control remains blocked, diagnose it or record a blocked check. The intruder and both APIs must remain Ready. Direct IPs avoid DNS, and the working request to the other namespace establishes the intruder's egress allowance before testing the local API's ingress restriction. An unexpected intruder success against `cks-lab/api` means its ingress boundary is too broad even if the earlier combined checks passed.
+
+Remove the temporary policy immediately, including after an unexpected result or an interrupted proof, but only if this attempt created it:
+
+```bash
+kubectl -n cks-lab delete networkpolicy cs01-ingress-probe --wait=true
+kubectl -n cks-lab get networkpolicy cs01-ingress-probe --ignore-not-found
+```
+
+The final query must succeed without returning a policy. Repeat the original allowed and denied checks after cleanup.
+
+You can also run the independent verifier using the lab context selected during setup:
+
+```bash
+python3 scripts/lab.py --context "$LAB_CONTEXT" verify CS01
+```
+
+It briefly creates its own scoped `cs01-ingress-probe` policy and cleans it up. Resolve an existing probe policy from an interrupted attempt before retrying. A blocked check is not a passing result.
+
+**Reset:** remove any temporary `cs01-ingress-probe` owned by this attempt, then delete only the four task policies you created, or use the shared namespace reset. Repeat the original successful probes before the next drill.
 
 After attempting the task, compare the selectors and proof strategy with the optional [worked references](../solutions/README.md).
 
@@ -133,7 +220,7 @@ printf '\n' >> work/CS05/kubectl
 kubectl get namespace cks-tiers cks-data --ignore-not-found
 ```
 
-Proceed only if that command succeeds with no namespaces returned. Existing namespaces must not be adopted or deleted. Check for cluster-wide CNI policies and automatic mesh injection that would change this baseline. The [three-tier fixture](fixtures/three-tier.yaml) uses small HTTP servers to represent the backend and database, plus three clients. It does not run a real database or application chain.
+Proceed only if that command succeeds with no namespaces returned. Existing namespaces must not be adopted or deleted. Check for cluster-wide CNI policies and automatic mesh injection that would change this baseline. The [three-tier fixture](fixtures/three-tier.yaml) uses small HTTP servers to represent the backend and database, plus four clients. It does not run a real database or application chain.
 
 ```bash
 mkdir -p work/CS06
@@ -144,7 +231,7 @@ kubectl -n cks-tiers get pods --show-labels
 kubectl -n cks-data get pods --show-labels
 ```
 
-**Baseline:** all five probes below must succeed before installing policy. Capture the database Pod address after readiness so negative tests can avoid DNS entirely. Refresh it if you replace that Pod. The case statement also brackets an IPv6 address correctly.
+**Baseline:** all seven probes below must succeed before installing policy. Capture both server Pod addresses after readiness so negative tests can avoid DNS entirely. Refresh an address if you replace its Pod. The case statements also bracket IPv6 addresses correctly.
 
 ```bash
 DB_IP=$(kubectl -n cks-data get pod database -o jsonpath='{.status.podIP}')
@@ -152,20 +239,29 @@ case "$DB_IP" in
   *:*) DB_URL="http://[$DB_IP]:8080/" ;;
   *) DB_URL="http://$DB_IP:8080/" ;;
 esac
+BACKEND_IP=$(kubectl -n cks-tiers get pod backend -o jsonpath='{.status.podIP}')
+case "$BACKEND_IP" in
+  *:*) BACKEND_URL="http://[$BACKEND_IP]:8080/" ;;
+  *) BACKEND_URL="http://$BACKEND_IP:8080/" ;;
+esac
 kubectl -n cks-tiers exec frontend -- wget -qO- -T 3 http://backend:8080/
+kubectl -n cks-tiers exec intruder -- wget -qO- -T 3 "$BACKEND_URL"
+kubectl -n cks-data exec frontend-witness -- wget -qO- -T 3 "$BACKEND_URL"
 kubectl -n cks-tiers exec backend -- wget -qO- -T 3 http://database.cks-data.svc:8080/
 kubectl -n cks-tiers exec frontend -- wget -qO- -T 3 "$DB_URL"
 kubectl -n cks-tiers exec intruder -- wget -qO- -T 3 "$DB_URL"
 kubectl -n cks-data exec backend-witness -- wget -qO- -T 3 "$DB_URL"
 ```
 
-**Task:** write `work/CS06/policies.yaml` with ingress default-deny policies named `cs06-deny-ingress` in both namespaces, `cs06-backend` in `cks-tiers`, and `cs06-database` in `cks-data`. Allow only frontend Pods in `cks-tiers` to reach backend Pods on TCP 8080. Allow only backend Pods in `cks-tiers` to reach database Pods in `cks-data` on TCP 8080. Combine each namespace selector and Pod selector in the **same peer entry**. Apply your file and repeat the exact five probes.
+**Task:** write `work/CS06/policies.yaml` with ingress default-deny policies named `cs06-deny-ingress` in both namespaces, `cs06-backend` in `cks-tiers`, and `cs06-database` in `cks-data`. Allow only frontend Pods in `cks-tiers` to reach backend Pods on TCP 8080. Allow only backend Pods in `cks-tiers` to reach database Pods in `cks-data` on TCP 8080. Combine each namespace selector and Pod selector in the **same peer entry**. Apply your file and repeat the exact seven probes.
 
-Keep egress unrestricted in this drill. This makes each database denial evidence about its ingress selector, rather than a source-egress rule masking a broken ingress policy. CS01 exercises both directions and DNS restrictions.
+Keep egress unrestricted in this drill. This makes each denial evidence about its destination's ingress selector, rather than a source-egress rule masking a broken ingress policy. CS01 exercises both directions and DNS restrictions.
 
 | Source | Destination | Before policy | Correct policy |
 | --- | --- | --- | --- |
 | `cks-tiers/frontend` | backend | succeeds | succeeds |
+| `cks-tiers/intruder` (right namespace, wrong label) | backend | succeeds | denied |
+| `cks-data/frontend-witness` (right label, wrong namespace) | backend | succeeds | denied |
 | `cks-tiers/backend` | database | succeeds | succeeds |
 | `cks-tiers/frontend` | database | succeeds | denied |
 | `cks-tiers/intruder` (right namespace, wrong label) | database | succeeds | denied |
@@ -218,7 +314,7 @@ kubectl -n cks-tiers exec frontend -- wget -qO- -T 3 "$DB_URL"
 kubectl -n cks-data delete networkpolicy cs06-database-reopen
 ```
 
-Both frontend requests succeed while the extra allow policy exists, even after reapplying the original default-deny and narrow allow rules. Allowed traffic is the union of applicable policies; a default-deny policy does not override another allowance. After deleting `cs06-database-reopen`, rerun all five probes and verify the correct-policy column. Confirm all Pods remain Ready. Compare your answer with the [worked policy](../solutions/three-tier-policy.yaml) after attempting it.
+Both frontend requests succeed while the extra allow policy exists, even after reapplying the original default-deny and narrow allow rules. Allowed traffic is the union of applicable policies; a default-deny policy does not override another allowance. After deleting `cs06-database-reopen`, rerun all seven probes and verify the correct-policy column. Confirm all Pods remain Ready. Compare your answer with the [worked policy](../solutions/three-tier-policy.yaml) after attempting it.
 
 **Reset:** delete only the two namespaces created for this drill:
 

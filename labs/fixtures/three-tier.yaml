@@ -229,6 +229,48 @@ spec:
 apiVersion: v1
 kind: Pod
 metadata:
+  name: frontend-witness
+  namespace: cks-data
+  labels:
+    tier: frontend
+spec:
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+  - name: app
+    image: docker.io/library/busybox:1.37
+    command:
+    - sleep
+    - '86400'
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+        - ALL
+    resources:
+      requests:
+        cpu: 10m
+        memory: 16Mi
+      limits:
+        cpu: 100m
+        memory: 64Mi
+    volumeMounts:
+    - name: tmp
+      mountPath: /tmp
+  volumes:
+  - name: tmp
+    emptyDir: {}
+---
+apiVersion: v1
+kind: Pod
+metadata:
   name: backend-witness
   namespace: cks-data
   labels:

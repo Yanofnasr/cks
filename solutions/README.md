@@ -31,11 +31,14 @@ kubectl -n cks-lab exec client -- wget -qO- -T 3 http://api.cks-lab.svc:8080/
 kubectl -n cks-lab exec intruder -- wget -qO- -T 3 http://api.cks-lab.svc:8080/
 kubectl -n cks-other exec client -- wget -qO- -T 3 http://api.cks-lab.svc:8080/
 kubectl -n cks-lab exec client -- wget -qO- -T 3 http://api.cks-other.svc:8080/
-kubectl -n cks-lab exec client -- nslookup api.cks-lab.svc
+DNS_SUFFIX=cluster.local # Replace with the suffix from the client's resolver search line.
+kubectl -n cks-lab exec client -- nslookup "api.cks-lab.svc.$DNS_SUFFIX."
 kubectl -n cks-other exec client -- wget -qO- -T 3 http://api:8080/
 ```
 
 Expect the first HTTP request, DNS lookup and last HTTP request to succeed. The other three HTTP requests must fail while their callers and destinations remain healthy. Repeat direct-Pod-IP probes if needed to separate transport denial from name-resolution failure.
+
+Then complete [CS01's independent ingress check](../labs/cluster-setup.md#independent-ingress-check). Its temporary intruder egress allowance targets only the fixture APIs in `cks-lab` and `cks-other` on TCP 8080. Require the intruder's direct-IP request to the healthy `cks-other/api` to succeed before accepting its denial from the healthy `cks-lab/api`; otherwise delayed egress convergence can conceal a broad ingress rule. Check the temporary policy name is unused, remove only the policy created by this attempt even after a failed proof, and repeat the original checks after removal. The optional independent verifier is `python3 scripts/lab.py --context "$LAB_CONTEXT" verify CS01`.
 
 Why it works:
 

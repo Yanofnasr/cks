@@ -48,15 +48,50 @@ The equivalent Pod-reader Role should pass the server-side dry run; the Secret-r
 **Prove:** compare the projected volumes/mounts and the token-file presence before and after recreation. Inspect presence only, never print a token. Prove that mounting and authorization are distinct:
 
 ```bash
-kubectl auth can-i list pods -n cks-lab \
-  --as=system:serviceaccount:cks-lab:ch02-client
-kubectl auth can-i get secrets -n cks-lab \
-  --as=system:serviceaccount:cks-lab:ch02-client
+for verb in get list; do
+  kubectl auth can-i "$verb" pods -n cks-lab \
+    --as=system:serviceaccount:cks-lab:ch02-client
+done
+for verb in get list watch; do
+  kubectl auth can-i "$verb" secrets -n cks-lab \
+    --as=system:serviceaccount:cks-lab:ch02-client
+done
+for verb in watch create update patch delete deletecollection; do
+  kubectl auth can-i "$verb" pods -n cks-lab \
+    --as=system:serviceaccount:cks-lab:ch02-client
+done
 kubectl auth can-i list pods -n cks-other \
   --as=system:serviceaccount:cks-lab:ch02-client
 ```
 
-The results must be `yes`, `no`, `no`, while the Pod still has no automatically mounted token. In a separate Pod variant, use an explicit projected ServiceAccount token with a short lifetime and intended audience; observe the volume specification without logging its contents. An explicit projection is separate from automatic mounting.
+Only the first two queries must say `yes`; all others must say `no`, while the Pod still has no automatically mounted token. A failed request or impersonation error is not the expected authorization answer. Secret `list` and `watch` permission can reveal values even when `get` is denied. Inspect the Role and every binding contributing to this identity so that the intended grant contains only `get` and `list` on Pods.
+
+Run the independent verifier before cleanup, using the lab context selected during setup:
+
+The drill's Role adds only Pod reads. Kubernetes also provides standard self-review APIs and, on the current baseline, read access to public [ClusterTrustBundles](https://kubernetes.io/docs/reference/access-authn-authz/certificate-signing-requests/#cluster-trust-bundles). These public certificates are separate from Secrets. Preserve those built-in grants; the verifier permits them while rejecting additional workload permissions, including grants restricted to named resources.
+
+```bash
+python3 scripts/lab.py --context "$LAB_CONTEXT" verify CH02
+```
+
+**Core complete:** record the authorization and token-mounting results. For a first session, finish here and clean up the four core resources:
+
+```bash
+kubectl -n cks-lab delete pod ch02-client --wait=true
+kubectl -n cks-lab delete rolebinding ch02-pod-reader
+kubectl -n cks-lab delete role ch02-pod-reader
+kubectl -n cks-lab delete serviceaccount ch02-client
+kubectl -n cks-lab get pod/ch02-client rolebinding/ch02-pod-reader \
+  role/ch02-pod-reader serviceaccount/ch02-client --ignore-not-found
+```
+
+The final query must succeed without returning resources. The optional sections below begin from the proved Pod-reader state; retain it if continuing now, or recreate and verify it before a later attempt. Run the final reset after any extension.
+
+### Optional token projection
+
+Create a separate Pod named `ch02-projected` using `ch02-client`, with automatic token mounting still disabled and an explicit projected ServiceAccount token with a short lifetime and intended audience. Inspect the volume/mount specification and file presence without printing token contents. This proves explicit projection is separate from automatic mounting; it does not prove the audience is accepted by a particular API, actual expiry, or credential rotation. Delete `ch02-projected` afterward and keep the core Pod unchanged.
+
+### Optional binding and indirect Secret access
 
 **Binding check:** as the administrator, create an unbound Role `ch02-secret-probe` allowing only `get` on the dummy Secret name `training-secret`. A Role alone grants nobody access. Temporarily grant `ch02-client` only `create` on namespaced `rolebindings` through a Role and RoleBinding named `ch02-binding-author`. Do not grant `bind`, `escalate` or access to Secrets. Run these server-side dry runs as that limited identity:
 
@@ -162,7 +197,7 @@ kubectl -n cks-lab delete secret ch02-dummy-secret
 
 The authorization answer must return to `no`. Removing the creation grant does not terminate an existing Pod or remove its mounted data. RBAC cannot constrain a `create pods` grant to a preselected Pod name; keep this brief grant confined to the disposable namespace.
 
-**Reset:** remove any remaining `ch02-binding-author` and `ch02-pod-creator` RoleBindings and Roles and the unbound `ch02-secret-probe` Role. Delete `ch02-client` and `ch02-secret-mount` Pods, `ch02-pod-reader` RoleBinding and Role, `ch02-client` ServiceAccount and `ch02-dummy-secret` Secret. Remove the local extension manifest when finished. Confirm no exercise binding remains and do not change the `default` ServiceAccount or another task's identity.
+**Reset:** remove any remaining `ch02-binding-author` and `ch02-pod-creator` RoleBindings and Roles and the unbound `ch02-secret-probe` Role. Delete `ch02-client`, `ch02-projected` and `ch02-secret-mount` Pods, `ch02-pod-reader` RoleBinding and Role, `ch02-client` ServiceAccount and `ch02-dummy-secret` Secret. Remove the local extension manifest when finished. Confirm no exercise binding remains and do not change the `default` ServiceAccount or another task's identity.
 
 The optional [worked references](../solutions/README.md) cover the ordinary Pod-reader identity and token-mounting setup.
 

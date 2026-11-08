@@ -60,14 +60,20 @@ If CH02 left a Pod named `ch02-client`, delete only that owned Pod and wait for 
 kubectl -n cks-lab delete pod ch02-client --ignore-not-found --wait=true
 kubectl apply -f solutions/serviceaccount.yaml
 kubectl -n cks-lab wait --for=condition=Ready pod/ch02-client --timeout=120s
-kubectl auth can-i list pods -n cks-lab --as=system:serviceaccount:cks-lab:ch02-client
-kubectl auth can-i get secrets -n cks-lab --as=system:serviceaccount:cks-lab:ch02-client
-kubectl auth can-i create pods -n cks-lab --as=system:serviceaccount:cks-lab:ch02-client
+for verb in get list; do
+  kubectl auth can-i "$verb" pods -n cks-lab --as=system:serviceaccount:cks-lab:ch02-client
+done
+for verb in get list watch; do
+  kubectl auth can-i "$verb" secrets -n cks-lab --as=system:serviceaccount:cks-lab:ch02-client
+done
+for verb in watch create update patch delete deletecollection; do
+  kubectl auth can-i "$verb" pods -n cks-lab --as=system:serviceaccount:cks-lab:ch02-client
+done
 kubectl auth can-i list pods -n cks-other --as=system:serviceaccount:cks-lab:ch02-client
 kubectl -n cks-lab exec ch02-client -- test ! -e /var/run/secrets/kubernetes.io/serviceaccount/token
 ```
 
-Expect `yes`, `no`, `no`, `no`, then a successful absence check. Inspect the running Pod's volume/mount specification too. Permissions do not require mounting a token; a Pod-level `automountServiceAccountToken: true` could override the ServiceAccount default, and an explicit projected token is a separate choice.
+Expect `yes` for the first two authorization queries and `no` for every subsequent query, then a successful absence check. A Secret `get` denial does not rule out bulk access through `list` or `watch`. Inspect all contributing bindings and the running Pod's volume/mount specification too. Permissions do not require mounting a token; a Pod-level `automountServiceAccountToken: true` could override the ServiceAccount default, and an explicit projected token is a separate choice. Before cleanup, you can run `python3 scripts/lab.py --context "$LAB_CONTEXT" verify CH02`.
 
 Administrator impersonation tests authorization, not possession of credentials. CH01's client-certificate exercise verifies authentication separately. CH02's extension demonstrates why permission to create Pods can expose namespace Secrets even without direct Secret-read permission; do it only with dummy data and scoped temporary grants.
 

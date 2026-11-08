@@ -4,6 +4,7 @@ name: Repository checks
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -11,17 +12,170 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
       - name: Check documentation and JSON fixtures
         run: python3 scripts/check.py
       - name: Test repository checks and the webhook fixture
-        run: python3 -m unittest discover -s tests -v
+        run: |
+          python3 -m unittest discover -s tests -v
+          python3 -m unittest discover -s tests -p cluster_smoke.py -v
       - name: Test the compiled image example
         env:
           GOTOOLCHAIN: local
           GOPROXY: "off"
         run: go test labs/fixtures/image-go/main.go labs/fixtures/image-go/main_test.go
+      - name: Install pinned manifest and secret validators
+        run: |
+          python3 -m pip install --disable-pip-version-check yamllint==1.35.1
+          mkdir -p "$RUNNER_TEMP/validators"
+          cd "$RUNNER_TEMP/validators"
+          curl --fail --location --retry 3 --output kubeconform.tar.gz \
+            https://github.com/yannh/kubeconform/releases/download/v0.7.0/kubeconform-linux-amd64.tar.gz
+          printf '%s  %s\n' c31518ddd122663b3f3aa874cfe8178cb0988de944f29c74a0b9260920d115d3 kubeconform.tar.gz | sha256sum --check -
+          tar -xzf kubeconform.tar.gz kubeconform
+          curl --fail --location --retry 3 --output gitleaks.tar.gz \
+            https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          printf '%s  %s\n' 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb gitleaks.tar.gz | sha256sum --check -
+          tar -xzf gitleaks.tar.gz gitleaks
+          curl --fail --location --retry 3 --output opa \
+            https://github.com/open-policy-agent/opa/releases/download/v1.22.2/opa_linux_amd64_static
+          printf '%s  %s\n' 24e344d1fc394cd93dc75666f584cfb97c6981f7255af25f8d2979834317317b opa | sha256sum --check -
+          chmod +x opa
+          echo "$RUNNER_TEMP/validators" >> "$GITHUB_PATH"
+      - name: Test Gatekeeper policy with the Rego engine
+        run: |
+          opa version
+          python3 -c 'import yaml'
+          python3 -m unittest discover -s tests -p test_rego.py -v
+      - name: Lint all versioned YAML
+        run: git ls-files -z '*.yaml' '*.yml' | xargs -0 --no-run-if-empty yamllint --strict
+      - name: Validate Kubernetes resource schemas
+        # Kubeconfig, audit/admission configuration, kind configuration, Falco rules,
+        # and controller-specific custom resources receive YAML linting separately.
+        # Their runtime interpretation is not claimed by Kubernetes resource schemas.
+        run: |
+          kubeconform -strict -summary -kubernetes-version 1.37.0 \
+            labs/fixtures/workloads.yaml labs/fixtures/workload.yaml \
+            labs/fixtures/three-tier.yaml labs/fixtures/namespace-pair.yaml \
+            labs/fixtures/registry-policy.yaml labs/fixtures/static-analysis/deployment.yaml \
+            solutions/network-policy.yaml solutions/three-tier-policy.yaml \
+            solutions/serviceaccount.yaml solutions/workload.yaml
+      - name: Scan version history for secrets
+        run: gitleaks git --redact --no-banner --log-opts=--all .
+
+  image:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build and exercise both compiled image stages
+        shell: bash
+        run: |
+          set -euo pipefail
+          trap 'docker rm -f cks-ci-single cks-ci-multi >/dev/null 2>&1 || true' EXIT
+          docker build -t cks-go:ci-single labs/fixtures/image-go
+          docker build -f solutions/Dockerfile.multistage -t cks-go:ci-multi labs/fixtures/image-go
+          docker run -d --name cks-ci-single -p 127.0.0.1:18080:8080 cks-go:ci-single
+          curl --fail --retry 10 --retry-connrefused --retry-delay 1 http://127.0.0.1:18080/ | grep -Fx cks-practice
+          docker run -d --name cks-ci-multi --read-only --cap-drop ALL \
+            --security-opt no-new-privileges -p 127.0.0.1:18081:8080 cks-go:ci-multi
+          curl --fail --retry 10 --retry-connrefused --retry-delay 1 http://127.0.0.1:18081/ | grep -Fx cks-practice
+          test "$(docker inspect --format '{{.Config.User}} {{.HostConfig.ReadonlyRootfs}}' cks-ci-multi)" = '65532:65532 true'
+          if docker exec cks-ci-multi /bin/sh -c true > "$RUNNER_TEMP/shell-probe.txt" 2>&1; then
+            echo 'FAIL: the runtime image unexpectedly contains a shell'
+            exit 1
+          fi
+          grep -E 'no such file|not found' "$RUNNER_TEMP/shell-probe.txt"
+          test "$(docker inspect --format '{{.State.Running}}' cks-ci-multi)" = true
+
+  cluster:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      KUBECONFIG: ${{ github.workspace }}/work/environments/cks-ci/kubeconfig
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned cluster tools
+        run: |
+          mkdir -p "$RUNNER_TEMP/cluster-tools"
+          cd "$RUNNER_TEMP/cluster-tools"
+          curl --fail --location --retry 3 --output kind \
+            https://github.com/kubernetes-sigs/kind/releases/download/v0.33.0/kind-linux-amd64
+          printf '%s  %s\n' aee6151561422756b764a4ae28e7f44cda5af5a9eead3cc9985112b1de8d8e0d kind | sha256sum --check -
+          curl --fail --location --retry 3 --output kubectl \
+            https://dl.k8s.io/release/v1.37.0/bin/linux/amd64/kubectl
+          printf '%s  %s\n' 6129359f4e1f3848a5572ccb0b26cf28b8ca08cef38c95a765b2f64a2c961a2f kubectl | sha256sum --check -
+          chmod +x kind kubectl
+          echo "$RUNNER_TEMP/cluster-tools" >> "$GITHUB_PATH"
+      - name: Create the disposable practice cluster
+        run: |
+          python3 scripts/environment.py create --name cks-ci
+          python3 scripts/environment.py status --name cks-ci
+          # Smoke tests start empty; setup has already exercised the owned baseline.
+          kubectl --context kind-cks-ci delete namespace cks-lab cks-other --wait=true --timeout=120s
+      - name: Verify readiness and correct and incorrect answers
+        run: |
+          python3 scripts/lab.py --context kind-cks-ci preflight
+          python3 tests/cluster_smoke.py --context kind-cks-ci
+      - name: Delete the disposable cluster
+        if: always()
+        run: |
+          if [ -f work/environments/cks-ci/environment.json ]; then
+            python3 scripts/environment.py delete --name cks-ci
+          fi
+
+  infrastructure:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [terraform, tofu]
+    env:
+      TF_IN_AUTOMATION: "1"
+      AWS_EC2_METADATA_DISABLED: "true"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned infrastructure engine
+        env:
+          ENGINE: ${{ matrix.engine }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/infrastructure-tools" "$RUNNER_TEMP/provider-cache"
+          cd "$RUNNER_TEMP/infrastructure-tools"
+          if [ "$ENGINE" = terraform ]; then
+            curl --fail --location --retry 3 -o engine.zip \
+              https://releases.hashicorp.com/terraform/1.16.1/terraform_1.16.1_linux_amd64.zip
+            printf '%s  %s\n' 745d33b4b02b7980c62a38ec1beea24ee084ea8caf3f503c200554bd9a0cbe49 engine.zip | sha256sum --check -
+          else
+            curl --fail --location --retry 3 -o engine.zip \
+              https://github.com/opentofu/opentofu/releases/download/v1.13.9/tofu_1.13.9_linux_amd64.zip
+            printf '%s  %s\n' bc44eb6b06446ba83bd4072114891987f590f66cca712737a7f1147c50c539ce engine.zip | sha256sum --check -
+          fi
+          unzip engine.zip "$ENGINE"
+          chmod +x "$ENGINE"
+          echo "$RUNNER_TEMP/infrastructure-tools" >> "$GITHUB_PATH"
+          echo "TF_PLUGIN_CACHE_DIR=$RUNNER_TEMP/provider-cache" >> "$GITHUB_ENV"
+      - name: Validate infrastructure and mock plans
+        env:
+          ENGINE: ${{ matrix.engine }}
+        run: |
+          "$ENGINE" fmt -check -recursive infrastructure
+          for profile in eks aks gke kubeadm-gcp; do
+            if [ "$ENGINE" = tofu ]; then
+              cp "infrastructure/$profile/.tofu.lock.hcl" "infrastructure/$profile/.terraform.lock.hcl"
+            fi
+            "$ENGINE" -chdir="infrastructure/$profile" init -backend=false -lockfile=readonly -input=false
+            "$ENGINE" -chdir="infrastructure/$profile" validate
+            "$ENGINE" -chdir="infrastructure/$profile" test
+          done

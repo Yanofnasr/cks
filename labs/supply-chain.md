@@ -2,6 +2,8 @@
 
 Use only lab artifacts and a registry you control for publishing exercises. Run commands from the repository root, save answers and outputs in ignored `work/`, and record actual tool versions and results in the [progress log](../preparation/PROGRESS.md). Optional build, scan and signing tools must already be installed; these exercises do not install them.
 
+For the connected supply-chain practice, use SC01's static-page image through SC02–SC05 and SC07. SC03 publishes the repaired image and records one immutable `PRACTICE_IMAGE` reference. Scan, deploy, sign and inventory that exact reference. The Go variation and SC08 are separate image exercises; do not substitute their reports into this evidence chain.
+
 ## SC01 Image footprint
 
 **Environment:** a working Docker or compatible image builder. The [image starter](fixtures/image/Dockerfile) serves a static page with BusyBox and deliberately leaves the default root identity.
@@ -14,7 +16,7 @@ docker build -t cks-image:practice work/image
 
 **Task:** inspect the image's layers, base and startup command. Make the copied image run as a non-root UID/GID on port 8080, with only the files needed to serve the page. Select and record a verified base-image digest. Explain which build inputs are needed at runtime; introduce a separate build stage only if an actual build step produces artifacts to copy.
 
-**Prove it:** build the edited context and start one named container, binding its HTTP port only to `127.0.0.1`. Fetch the page, inspect its runtime identity and compare image size/history with the starter. Repeat with a read-only filesystem, all capabilities dropped and no-new-privileges enabled. The page must still work, and a write into the image filesystem must fail. A successful build alone is insufficient.
+**Prove it:** rebuild the edited context as `cks-image:practice` and start one named container, binding its HTTP port only to `127.0.0.1`. Fetch the page, inspect its runtime identity and compare image size/history with the starter. Repeat with a read-only filesystem, all capabilities dropped and no-new-privileges enabled. The page must still work, and a write into the image filesystem must fail. A successful build alone is insufficient.
 
 **Reset:** stop and remove only your named probe container. Remove the `cks-image:practice` tag if no subsequent drill needs it. Do not prune the shared image store.
 
@@ -51,58 +53,79 @@ Reference: [multi-stage builds](https://docs.docker.com/build/building/multi-sta
 **Environment:** Trivy with a usable vulnerability database, plus the image built in SC01. Database downloads may require network access. Record scanner/database versions and update times.
 
 ```bash
-mkdir -p work
+mkdir -p work/SC02
 trivy --version
 trivy image --severity HIGH,CRITICAL --format json \
-  --output work/scan.json cks-image:practice
+  --output work/SC02/before.json cks-image:practice
 ```
 
-**Task:** identify the scanned artifact, affected packages, severity and any fixed versions. Distinguish OS packages from application dependencies. Choose a replacement base or dependency based on the actual findings, rebuild and rescan it. Do not infer safety from a tag's age or a historical statement that it had no vulnerabilities.
+**Task:** identify the scanned artifact, affected packages, severity and any fixed versions. Distinguish OS packages from application dependencies. Choose a replacement base or dependency based on the actual findings, rebuild as `cks-image:practice` and rescan it into `work/SC02/after.json`, preserving the earlier report. Repeat SC01's functional check after a rebuild. Do not infer safety from a tag's age or a historical statement that it had no vulnerabilities. If there is no applicable finding, record that result without inventing a repair.
 
 **Prove it:** retain the real before/after reports with image identity and database metadata. Configure a nonzero exit status when the chosen severity threshold is present. Exercise that failure path using a deliberately outdated lab image with an actual matching finding, without running the image. A scan with no matching findings should pass the same gate. If the required finding or database is unavailable, mark that control as not measured rather than manufacturing output.
 
-**Reset:** remove only the probe image/tag and reports you no longer need. Preserve your comparison notes; do not change shared scanner policy or registry contents.
+**Reset:** remove only the separate outdated probe image/tag and reports you no longer need. Keep the final `cks-image:practice` image and reports for SC03. Preserve your comparison notes; do not change shared scanner policy or registry contents.
 
 ## SC03 Image digests
 
-**Environment:** ordinary disposable cluster and an available registry/image-inspection tool. Apply the shared baseline, then copy the [workload starter](fixtures/workload.yaml) into `work/digest.yaml` and name its Pod `digest-demo`.
+**Environment:** ordinary disposable cluster, SC01/SC02's final static-page image, an owned lab registry and an available registry/image-inspection tool. The builder and cluster must have access to the registry. Keep credentials in their normal private credential stores; if a namespaced image-pull Secret is needed, create only a lab-owned `sc03-registry` Secret and do not save its contents in manifests, reports or Git.
 
-**Task:** resolve the exact image reference to a digest from the intended registry, record the node architecture, and replace the manifest's tag with an `image@sha256:...` reference. Deploy the copied manifest. Keep a note of how you obtained the expected digest.
+**Start:** set `PRACTICE_REPOSITORY` to a fully qualified repository you control, then publish only the final custom image:
 
-**Prove it:** the declared image uses the recorded digest, the Pod is Ready, and the running image identity matches the expected artifact for that node. An image-index digest, platform-manifest digest and local image/config ID are different identifiers; explain the relationship instead of comparing unrelated strings. In a separate probe, use a nonexistent digest and verify that it cannot start. A typo causing ImagePullBackOff is not a completed secure deployment.
+```bash
+: "${PRACTICE_REPOSITORY:?Set an owned lab registry/repository first}"
+docker tag cks-image:practice "$PRACTICE_REPOSITORY:practice"
+docker push "$PRACTICE_REPOSITORY:practice"
+```
 
-**Reset:** delete only the two probe Pods. Keep the real resolved digest for SC04 and SC05.
+**Task:** use the registry's image-inspection tool to resolve the digest of that pushed reference. Set `PRACTICE_IMAGE` to its full `registry/repository@sha256:...` reference, not to the upstream BusyBox base or a local image/config ID. Record the inspection command, registry and node architecture. Preserve the reference and scan the exact published artifact:
+
+```bash
+: "${PRACTICE_IMAGE:?Set the resolved registry/repository@sha256:... reference first}"
+mkdir -p work/SC03 work/SC02
+printf '%s\n' "$PRACTICE_IMAGE" > work/SC03/image-reference.txt
+trivy image --severity HIGH,CRITICAL --format json \
+  --output work/SC02/published.json "$PRACTICE_IMAGE"
+```
+
+Compare the local and published scan identities before comparing findings. Record scanner/database changes if the reports differ. Keep `work/SC02/published.json` as the scan paired with the SBOM and signature in later drills.
+
+Apply the shared baseline, copy the [workload starter](fixtures/workload.yaml) into `work/SC03/digest.yaml`, and name its Pod `digest-demo`. Set its image to the recorded `PRACTICE_IMAGE` value. **Remove the starter container's entire `command` field** so the custom image serves its packaged `/www/index.html` using its own startup command. Retain port 8080 and the HTTP readiness probe; configure the named image-pull Secret only if required. Deploy the edited copy.
+
+**Prove it:** the declared image uses the recorded digest, the Pod is Ready, and a healthy client receives the same packaged page tested in SC01. The running image identity must match the expected artifact for that node. An image-index digest, platform-manifest digest and local image/config ID are different identifiers; explain the relationship instead of comparing unrelated strings. In a separate probe, use a nonexistent digest and verify that it cannot start. A typo causing ImagePullBackOff is not a completed secure deployment.
+
+**Reset:** delete only the two probe Pods and `sc03-registry` if you created it for this exercise. Keep the published artifact, its saved digest reference and scan for SC04, SC05 and SC07. Do not remove a shared registry credential or repository.
 
 ## SC04 Signatures
 
 **Environment:** a compatible Cosign installation and a private lab registry where you are authorized to push images and signatures. Use dummy artifacts and an explicitly chosen transparency-log policy. Signing can contact a transparency service and publish signature metadata; use the current tool documentation before choosing an offline or private-log mode.
 
-**Start:** push the SC01 image to the owned registry, resolve its digest, and create a lab-only signing key pair under `work/`. Keep the private key and password out of Git. Set `SIGNED_IMAGE` to the fully qualified digest reference you actually pushed.
+**Start:** reload the published reference with `PRACTICE_IMAGE="$(cat work/SC03/image-reference.txt)"` and confirm it identifies the artifact scanned and deployed in SC03. Create a lab-only signing key pair under `work/`. Keep the private key and password out of Git. Do not rebuild, repush or resolve a mutable tag to select a different artifact for this step.
 
 **Task:** sign that digest with the lab key and verify it using only the expected public key:
 
 ```bash
-cosign verify --key work/cks-signing.pub "$SIGNED_IMAGE"
+cosign verify --key work/cks-signing.pub "$PRACTICE_IMAGE"
 ```
 
 Use the real public-key filename you generated. For a keyless variation, bind verification to both the expected signing identity and OIDC issuer. A valid signature from an arbitrary identity is not the requested publisher policy.
 
 **Prove it:** the expected key/identity accepts the intended digest; an unrelated public key fails; an unsigned different digest fails. Record the digest and verifier identity constraints. Changing a tag must not silently change which artifact you trust. Manual verification does not itself stop Kubernetes from admitting another image.
 
-**Reset:** remove only the lab tags/signatures through the owned registry's supported interface if they are no longer needed. Remove private key material when finished; retain non-secret evidence of the policy tested.
+**Reset:** remove private key material when signing practice is finished; retain non-secret verification evidence and the published artifact/signature for SC05 and SC07. After the connected sequence, remove only its lab tags/signatures through the owned registry's supported interface.
 
 Reference: [Cosign verification](https://docs.sigstore.dev/cosign/verifying/verify/).
 
 ## SC05 SBOMs
 
-**Environment:** Trivy or another real SBOM generator. Reuse the digest from SC03; set `IMAGE` to that actual image reference.
+**Environment:** Trivy or another real SBOM generator. Reuse the exact published artifact from SC03/SC04:
 
 ```bash
-trivy image --format spdx-json --output work/sbom.spdx.json "$IMAGE"
-trivy image --format cyclonedx --output work/sbom.cdx.json "$IMAGE"
+PRACTICE_IMAGE="$(cat work/SC03/image-reference.txt)"
+trivy image --format spdx-json --output work/sbom.spdx.json "$PRACTICE_IMAGE"
+trivy image --format cyclonedx --output work/sbom.cdx.json "$PRACTICE_IMAGE"
 ```
 
-**Task:** identify the artifact described, its packages/components, versions and available license information. Select one component and trace it to the image layer or dependency that introduced it. Compare the SBOM with the scanner report from SC02 and explain the difference between an inventory and a vulnerability result.
+**Task:** identify the artifact described, its packages/components, versions and available license information. Select one component and trace it to the image layer or dependency that introduced it. First confirm the SBOM and `work/SC02/published.json` describe the same published digest, then compare them and explain the difference between an inventory and a vulnerability result. Reports for the base image, Go variation or another digest cannot substitute for this comparison.
 
 **Prove it:** the files are valid documents in the claimed formats and contain actual component data for the selected image. Generate an SBOM for a second, different image and show that its identity and inventory are distinguishable. A file containing a format header, or an empty fallback after a failed tool invocation, is not evidence of a generated SBOM. State any missing package or license information rather than inventing it.
 
@@ -165,7 +188,7 @@ References: [ConstraintTemplates](https://open-policy-agent.github.io/gatekeeper
 
 **Environment:** the local Git checkout, SC01 build outputs and a JSON/text editor. A real attestation-verification extension also needs an artifact with published provenance and a trusted verifier already installed.
 
-**Start:** record the current commit, the hash of the actual Dockerfile used, its base digest, the build command, and the resulting image identity in `work/build-record.txt`. Note explicitly if the build context differs from the committed starter. This handwritten trace is not a signed attestation.
+**Start:** reload `PRACTICE_IMAGE` from `work/SC03/image-reference.txt`. In `work/build-record.txt`, record the current commit, the hash of the actual Dockerfile used in SC01/SC02, its base digest, the build command and the resulting published `PRACTICE_IMAGE`. Link the matching published scan, SC04 signature-verification output and SC05 SBOM. Note explicitly where the build context differs from the committed starter. Do not substitute a newly rebuilt image or the upstream base digest. This handwritten trace is not a signed attestation.
 
 **Task:** trace source, resolved dependencies, builder, artifact, test result, signature and publication as separate handoffs. Identify which values are immutable and who could replace each mutable tag or output. For a proposed CI flow, state which job may build, which may sign and which may publish; untrusted contributions must not receive publishing/signing authority.
 

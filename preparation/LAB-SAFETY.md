@@ -1,6 +1,6 @@
 # Lab setup
 
-Use a disposable cluster you own. The namespace fixtures below are enough to start ordinary Kubernetes drills. Host and control-plane tasks need dedicated VMs with snapshots and console/SSH recovery access.
+Use a disposable cluster you own. First follow [environment creation](ENVIRONMENTS.md), which sets `KUBECONFIG` and `LAB_CONTEXT`; then prepare the baseline below. Host and control-plane tasks need dedicated VMs with snapshots and console/SSH recovery access. Check the [compatibility map](COMPATIBILITY.md) before starting a drill.
 
 ## Environments
 
@@ -13,26 +13,29 @@ Use a disposable cluster you own. The namespace fixtures below are enough to sta
 
 A manifest or CRD alone does not establish a working controller. Check the named prerequisite before starting. Use current official installation instructions for the chosen Kubernetes/runtime combination. Keep AppArmor enabled on nodes used for its drill.
 
-Command examples assume a Linux shell with standard GNU utilities; node commands require the stated disposable Linux VM. On macOS or Windows, use a suitable Linux VM/terminal or adapt local-only commands such as `sha256sum` deliberately. Python 3.11+ is needed only for repository checks. Each build, scanner, mesh, firewall and kernel drill names its additional tools.
+Command examples assume a Linux shell with standard GNU utilities; node commands require the stated disposable Linux VM. On macOS or Windows, use a suitable Linux VM/terminal or adapt local-only commands such as `sha256sum` deliberately. Python 3.11+ is needed for preflight, the independent verifier and repository checks. Each build, scanner, mesh, firewall and kernel drill names its additional tools.
 
 Pods use the cluster-provided DNS search configuration. The examples use names such as `api.cks-lab.svc`, avoiding a fixed cluster-domain suffix. Inspect the client's `/etc/resolv.conf` and use the actual full domain if its DNS policy/search configuration differs. Keep namespaces, label selectors, CNI enforcement, IP family and image architecture consistent with the task.
 
 ## Select the cluster deliberately
 
-Run commands from this repository root. Create a private working directory and put a kubeconfig containing only the lab identity at `work/kubeconfig`:
+Run commands from this repository root. The environment guide creates a private working directory and kubeconfig containing only the lab identity. In a new terminal, export `KUBECONFIG` with the exact filename you chose and `LAB_CONTEXT` with that environment's context. The checks below preserve those selections, including an alternate kubeconfig filename:
 
 ```bash
 umask 077
 mkdir -p work
-export KUBECONFIG="$PWD/work/kubeconfig"
+: "${KUBECONFIG:?Export the exact lab kubeconfig filename chosen during setup}"
+: "${LAB_CONTEXT:?Export the context chosen during setup}"
+test -f "$KUBECONFIG"
+kubectl config use-context "$LAB_CONTEXT"
 kubectl config current-context
-export LAB_CONTEXT="$(kubectl config current-context)"
 kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}'
 kubectl get nodes -o wide
 kubectl version
+python3 scripts/lab.py --context "$LAB_CONTEXT" preflight
 ```
 
-Populate the kubeconfig before running these commands. Confirm its endpoint and node names belong to the disposable environment. Keep generated keys, Secret values, scans and edited manifests in `work/`, which Git ignores. A lab kubeconfig does not protect the local machine from node-level shell commands: check which host your terminal is on.
+Populate the kubeconfig and set `LAB_CONTEXT` before running these commands. Confirm its endpoint and node names belong to the disposable environment. Preflight reads metadata and permissions; it cannot prove policy enforcement or every host capability. Resolve BLOCKED results before dependent work. Keep generated keys, Secret values, scans and edited manifests in `work/`, which Git ignores. A lab kubeconfig does not protect the local machine from node-level shell commands: check which host your terminal is on.
 
 ## Shared starting state
 
@@ -61,6 +64,52 @@ kubectl exec -n cks-lab client -- wget -qO- -T 3 http://api.cks-other.svc:8080
 ```
 
 All four should succeed initially. The clients sleep for 24 hours; recreate the baseline for a later session. Diagnose image pulls, application readiness and DNS before treating a failed request as evidence of a policy boundary.
+
+## First session
+
+Allow approximately 75-110 minutes of active practice after environment setup. This is guided practice for someone comfortable with CKA-level administration, not a timed examination. Start with the kind profile; the documented EKS profile must skip the network drill because of its [fixture restriction](COMPATIBILITY.md).
+
+Copy the progress template once, preserving an existing personal log:
+
+```bash
+test -e work/PROGRESS.md || cp preparation/PROGRESS.md work/PROGRESS.md
+mkdir -p work/CS01 work/CH02
+```
+
+| Step | Do | Prove and finish |
+|---|---|---|
+| 1 | Run preflight and establish all four baseline connections above | Correct context, healthy Pods and working DNS/application before adding controls |
+| 2 | Attempt [CS01](../labs/cluster-setup.md#cs01-network-isolation) in `work/CS01/` | Run its manual proof, then `python3 scripts/lab.py --context "$LAB_CONTEXT" verify CS01`; delete only its four named policies and repeat the baseline connections |
+| 3 | Attempt [CH02 core](../labs/cluster-hardening.md#ch02-serviceaccounts), through the token/Pod-reader proof | Run `python3 scripts/lab.py --context "$LAB_CONTEXT" verify CH02`; defer the binding and Secret-via-Pod extensions, then delete the core Pod, RoleBinding, Role and ServiceAccount |
+| 4 | Attempt [MW02](../labs/workload-security.md#mw02-workload-hardening) using `work/demo.yaml` | Run `python3 scripts/lab.py --context "$LAB_CONTEXT" verify MW02`; retain your manifest for RT03, delete only `cks-lab/demo`, and confirm the shared witnesses remain healthy |
+| 5 | Record guided results and reset evidence in `work/PROGRESS.md` | Repeat independently in a later session, then choose the [next exercises](SESSIONS.md#after-the-first-session) |
+
+Attempt the solution before opening [worked references](../solutions/README.md). The verifier checks the prepared exercise; it does not solve it. CS01 verification briefly creates a narrowly scoped policy and removes it, so it needs create/delete permissions on lab NetworkPolicies. For FAIL, compare the reported observation to the task. For BLOCKED, repair the stated environment or witness before judging the solution. [Result codes and limits](VALIDATION.md#first-session-verifier).
+
+For the first CH02 core reset, these names must be objects you created for that drill:
+
+```bash
+kubectl -n cks-lab delete pod ch02-client --wait=true
+kubectl -n cks-lab delete rolebinding ch02-pod-reader
+kubectl -n cks-lab delete role ch02-pod-reader
+kubectl -n cks-lab delete serviceaccount ch02-client
+```
+
+Use the full drill reset if you attempted extensions. In every drill, a nonzero negative probe is expected only when its error explains the intended denial. Do not run every command under a blanket `set -e`, and do not hide failures with `|| true`.
+
+## Diagnose a blocked start
+
+| Symptom | Check before changing the solution |
+|---|---|
+| API unreachable or wrong context | Selected kubeconfig, endpoint, VPN/authorized IP and provider login; use `kubectl --request-timeout=10s get nodes` |
+| Pod Pending or ImagePullBackOff | `kubectl -n cks-lab describe pod POD`; inspect scheduling, image architecture, registry access and recent events |
+| Pod starts but is not Ready | `kubectl -n cks-lab logs POD` and `describe pod`; confirm the application command, port and writable directory |
+| DNS fails | `kubectl -n cks-lab exec client -- cat /etc/resolv.conf`, resolver readiness and the exercise's DNS egress rule |
+| Every HTTP probe fails | First restore the clean baseline; prove the server and a healthy witness work before interpreting policy denial |
+| Forbidden API operation | Confirm which identity and verb were rejected; an administrator lacking impersonation is an environment blocker |
+| A later exercise behaves differently | Check leftover NetworkPolicies, namespace PSA/mesh labels and earlier admission configuration; complete the owning drill's reset |
+
+Substitute the named Pod for `POD`. Keep diagnostic output private when it includes cluster details. A shared namespace reset clears practice state; it does not repair a missing CNI, provider restriction or failed node. Use the [environment teardown](ENVIRONMENTS.md) when finished paying for or running a cluster.
 
 ## Working with fixtures
 

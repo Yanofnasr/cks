@@ -15,7 +15,7 @@ PRIVATE = {"work", ".git", ".aws", ".kube"}
 
 def markdown_files(root):
     paths = list(root.glob("*.md"))
-    for directory in ("preparation", "labs", "solutions"):
+    for directory in ("preparation", "labs", "solutions", "infrastructure"):
         paths.extend((root / directory).rglob("*.md"))
     return sorted(p for p in paths if not any(part.startswith(".") for part in p.relative_to(root).parts))
 
@@ -124,15 +124,19 @@ def check(root):
                         except (OSError, UnicodeError) as error:
                             errors.append(f"{label}: cannot read anchor target: {error}")
 
-    study = texts.get(root / "preparation/STUDY-PATH.md")
-    if study is None:
-        errors.append("preparation/STUDY-PATH.md: missing study path")
-    else:
-        mapped = set(re.findall(r"\b" + DRILL + r"\b", study))
+    for filename, description in [("STUDY-PATH.md", "study path"),
+                                  ("COMPATIBILITY.md", "compatibility map")]:
+        path = root / "preparation" / filename
+        document = texts.get(path)
+        if document is None:
+            if filename == "STUDY-PATH.md":
+                errors.append(f"preparation/{filename}: missing {description}")
+            continue
+        mapped = set(re.findall(r"\b" + DRILL + r"\b", document))
         for identifier in sorted(drills.keys() - mapped):
-            errors.append(f"{drills[identifier]}: {identifier} missing from study path")
+            errors.append(f"{drills[identifier]}: {identifier} missing from {description}")
         for identifier in sorted(mapped - drills.keys()):
-            errors.append(f"preparation/STUDY-PATH.md: unknown drill {identifier}")
+            errors.append(f"preparation/{filename}: unknown drill {identifier}")
     if not drills:
         errors.append("labs/: no drill IDs found")
 

@@ -22,6 +22,8 @@ The exam's documentation list is not a recommendation to deploy an old controlle
 
 Use LF/CNCF for exam scope and the component maintainers for implementation details. Match documentation to the installed version and environment, especially containerd configuration, admission/authentication APIs, CNI address handling and runtime event fields. The collection below is a selected primary-source bibliography, not a claim to exhaust all preparation material.
 
+For creating an environment, use the [manual platform guides](ENVIRONMENTS.md), their linked provider documentation and the [compatibility map](COMPATIBILITY.md). The pinned local profile follows the [kind v0.33.0 release](https://github.com/kubernetes-sigs/kind/releases/tag/v0.33.0) and [Calico kind guide](https://docs.tigera.io/calico/latest/getting-started/kubernetes/kind), checked in **November 2026**. [Runtime records](VALIDATION.md) state what was actually exercised; source review alone is not a tested combination.
+
 | Topic | Documentation |
 |---|---|
 | Network isolation | [NetworkPolicy](https://kubernetes.io/docs/concepts/services-networking/network-policies/) |

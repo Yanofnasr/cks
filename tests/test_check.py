@@ -44,6 +44,10 @@ class RepositoryChecks(unittest.TestCase):
         self.put("README.md", "[Missing](labs/missing.md)\n")
         self.assertTrue(any("missing target" in error for error in check(self.root)))
 
+    def test_infrastructure_guides_are_checked(self):
+        self.put("infrastructure/local/README.md", "[Missing](missing.md)\n")
+        self.assertTrue(any("infrastructure/local/README.md" in error for error in check(self.root)))
+
     def test_missing_anchor(self):
         self.put("README.md", "[Missing](labs/core.md#not-a-heading)\n")
         self.assertTrue(any("missing anchor" in error for error in check(self.root)))
@@ -110,6 +114,14 @@ Use `[Not a link](missing.md)` as an example.
     def test_study_path_cannot_invent_a_drill(self):
         self.put("preparation/STUDY-PATH.md", "CS01\nSC99\n")
         self.assertTrue(any("unknown drill SC99" in error for error in check(self.root)))
+
+    def test_compatibility_map_cannot_omit_or_invent_drills(self):
+        self.put("preparation/COMPATIBILITY.md", "# Compatibility\n\n| SC99 | Local |\n")
+        errors = check(self.root)
+        self.assertTrue(any("CS01 missing from compatibility map" in error for error in errors))
+        self.assertTrue(any("unknown drill SC99" in error for error in errors))
+        self.put("preparation/COMPATIBILITY.md", "# Compatibility\n\n| CS01 | Local |\n")
+        self.assertEqual(check(self.root), [])
 
     def test_malformed_json_and_jsonl_fail_with_locations(self):
         self.put("labs/fixtures/profile.json", '{"broken": }')

@@ -38,7 +38,7 @@ python3 scripts/lab.py --context "$LAB_CONTEXT" preflight
 python3 scripts/lab.py --context "$LAB_CONTEXT" verify CS01
 ```
 
-Run verification after solving the named drill. Results are PASS, FAIL or BLOCKED; an environmental blocker identifies what to repair before assessing the solution. See [completed checks and verifier behaviour](preparation/VALIDATION.md), including the temporary policy used by CS01's verifier.
+Run verification after solving the named drill. The local setup's saved cluster identity is checked automatically; manual and cloud setups use the [explicit cluster UID acknowledgement](preparation/LAB-SAFETY.md#select-the-cluster-deliberately). Results are PASS, FAIL or BLOCKED; an environmental blocker identifies what to repair before assessing the solution. See [completed checks and verifier behaviour](preparation/VALIDATION.md), including the temporary policy used by CS01's verifier.
 
 When you finish the local session:
 

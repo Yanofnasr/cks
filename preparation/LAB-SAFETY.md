@@ -37,6 +37,18 @@ python3 scripts/lab.py --context "$LAB_CONTEXT" preflight
 
 Populate the kubeconfig and set `LAB_CONTEXT` before running these commands. Confirm its endpoint and node names belong to the disposable environment. Preflight reads metadata and permissions; it cannot prove policy enforcement or every host capability. Resolve BLOCKED results before dependent work. Keep generated keys, Secret values, scans and edited manifests in `work/`, which Git ignores. A lab kubeconfig does not protect the local machine from node-level shell commands: check which host your terminal is on.
 
+Every `verify` command checks the cluster identity before running a drill. For a cluster created with `scripts/environment.py`, the live `kube-system` UID and ownership marker must match its saved environment record. Keep `work/environments/<name>/environment.json` with its kubeconfig until teardown. No extra verification flag is needed for this route.
+
+For manual kind, cloud or other externally created labs, first confirm the endpoint and nodes against your own provisioning records. Copy the `kube-system` UID reported by preflight once into a session variable, then append the acknowledgement to each `verify` command shown in this workbook. After solving CH02, for example:
+
+```bash
+export LAB_CLUSTER_UID='replace-with-the-confirmed-lab-cluster-uid'
+python3 scripts/lab.py --context "$LAB_CONTEXT" verify CH02 \
+  --external-lab-uid "$LAB_CLUSTER_UID"
+```
+
+Use the same recorded UID throughout that session. A recreated cluster requires a fresh identity check. The flag acknowledges your choice of lab; it cannot establish that the cluster is disposable. It does not override a mismatched or damaged local ownership record. If verification reports an identity mismatch, check the selected kubeconfig and saved environment before retrying.
+
 ## Shared starting state
 
 The shared fixtures own **`cks-lab` and `cks-other`**. If either namespace already contains unrelated work, use a fresh cluster. CS06 separately creates `cks-tiers` and `cks-data`; SC09 creates `cks-image-policy`. Follow those drills' preflight and cleanup for their extra namespaces. Admission policies/bindings, Gatekeeper templates/constraints, CSRs and RuntimeClasses are explicitly introduced only by their corresponding drills.

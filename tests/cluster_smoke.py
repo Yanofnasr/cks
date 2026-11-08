@@ -8,9 +8,12 @@ import subprocess
 import sys
 import time
 import unittest
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from scripts import lab
 
 
 def require_result(result, expected=0, reason=""):
@@ -29,6 +32,13 @@ def wait_for_denial(request, reason):
 
 
 class ResultChecks(unittest.TestCase):
+    def test_smoke_rejects_unknown_identity_before_any_cluster_command(self):
+        with patch.object(lab, "verify_identity", side_effect=lab.Blocked("identity not acknowledged")), \
+                patch("subprocess.run") as command:
+            with self.assertRaisesRegex(RuntimeError, "identity not acknowledged"):
+                smoke("kind-cks-test")
+            command.assert_not_called()
+
     def test_expected_denial_requires_its_reason(self):
         require_result(subprocess.CompletedProcess([], 1, "FAIL: intended denial", ""), 1, "intended denial")
         with self.assertRaises(RuntimeError):
@@ -47,7 +57,12 @@ class ResultChecks(unittest.TestCase):
             wait_for_denial(lambda: subprocess.CompletedProcess([], 1, "", "unrelated error"), "named policy denial")
 
 
-def smoke(context):
+def smoke(context, external_lab_uid=None):
+    try:
+        lab.verify_identity(lab.Kubectl(context), external_lab_uid)
+    except lab.Blocked as error:
+        raise RuntimeError(str(error)) from None
+
     def request(*args, document=None):
         return subprocess.run(
             ["kubectl", "--context", context, "--request-timeout=30s", *args],
@@ -64,7 +79,8 @@ def smoke(context):
         while True:
             result = subprocess.run(
                 [sys.executable, str(ROOT / "scripts/lab.py"), "--context", context,
-                 "verify", drill], text=True, capture_output=True, timeout=180,
+                 "verify", drill, *(["--external-lab-uid", external_lab_uid] if external_lab_uid else [])],
+                text=True, capture_output=True, timeout=180,
             )
             if result.returncode == expected:
                 require_result(result, expected, reason)
@@ -201,10 +217,11 @@ def smoke(context):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--context", required=True, help="Explicit context of an empty disposable kind cluster")
+    parser.add_argument("--external-lab-uid", help="Explicitly acknowledge an externally created lab's kube-system UID")
     args = parser.parse_args()
     if not args.context.startswith("kind-cks-"):
         parser.error("Use a dedicated kind cluster whose name starts with cks-.")
     try:
-        smoke(args.context)
+        smoke(args.context, args.external_lab_uid)
     except (OSError, RuntimeError, subprocess.TimeoutExpired) as error:
         sys.exit(f"FAIL: {error}")

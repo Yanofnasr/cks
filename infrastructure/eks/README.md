@@ -95,7 +95,7 @@ python3 scripts/lab.py --context "$LAB_CONTEXT" preflight
 
 The kubeconfig uses AWS CLI authentication; keep the selected `AWS_PROFILE` in each practice shell. If the administrator's egress address changes, update `admin_cidr`, review a new plan and apply it from the recorded state. Do not open the API to all addresses to bypass a connectivity problem.
 
-Continue with the [shared baseline](../../preparation/LAB-SAFETY.md#shared-starting-state), then CH02 and MW02. Nodes use IMDSv2 with a response hop limit of one; the VPC CNI receives its own IRSA role rather than network-management permissions on the worker role. This separates node infrastructure authority from workload credentials. The single NAT is an explicit lab cost/availability choice, not a production architecture.
+Confirm the [lab identity and record its UID](../../preparation/LAB-SAFETY.md#select-the-cluster-deliberately), then continue with the [shared baseline](../../preparation/LAB-SAFETY.md#shared-starting-state), CH02 and MW02. Nodes use IMDSv2 with a response hop limit of one; the VPC CNI receives its own IRSA role rather than network-management permissions on the worker role. This separates node infrastructure authority from workload credentials. The single NAT is an explicit lab cost/availability choice, not a production architecture.
 
 ## Destroy
 

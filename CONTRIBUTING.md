@@ -65,7 +65,14 @@ CI also runs pinned YAML, Kubernetes schema and secret validators, builds and ex
 
 Infrastructure changes also run formatting, provider-schema validation and mock-provider plans with both Terraform and OpenTofu. Keep both engine lockfiles with each profile and test changes without cloud credentials using the [infrastructure contributor checks](infrastructure/README.md#check-changes-without-creating-cloud-resources). Test lifecycle ownership and bootstrap credential handling at their command boundaries. Render changed Mermaid diagrams and keep their accompanying text useful without the diagram.
 
-To repeat the cluster checks, create a **separate empty** kind cluster named `cks-ci` using the environment guide, then run `python3 tests/cluster_smoke.py --context kind-cks-ci`. This creates and deletes its own practice namespaces and admission policy. It refuses existing practice resources, verifies correct answers and deliberately incorrect answers, and checks native admission. Do not run it in a learner's active session. The CI workflow uses a read-only repository token and does not publish images or provision cloud resources.
+To repeat the cluster checks, create a **separate owned** environment with `python3 scripts/environment.py create --name cks-ci`. After successful creation, run the printed kubeconfig/context exports. Setup has checked the starter baseline; remove only that baseline so the smoke tests can create their own resources:
+
+```bash
+kubectl --context kind-cks-ci delete namespace cks-lab cks-other --wait=true --timeout=120s
+python3 tests/cluster_smoke.py --context kind-cks-ci
+```
+
+Finish with `python3 scripts/environment.py delete --name cks-ci`, including after a failed test. The smoke runner checks cluster identity before creating or deleting its practice resources and refuses existing practice namespaces. A manually created test cluster requires the same explicit `--external-lab-uid` acknowledgement described in the lab setup guide. Do not run smoke tests in a learner's active session. CI uses a read-only repository token and does not publish images or provision cloud resources.
 
 ## Licensing and attribution
 

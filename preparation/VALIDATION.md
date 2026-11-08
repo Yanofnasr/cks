@@ -50,7 +50,7 @@ The SSH bootstrap helper passed twelve unit tests for inventory checks, strict h
 
 ## First-session verifier
 
-With Python 3.11+, kubectl and the isolated lab kubeconfig:
+With Python 3.11+, kubectl and the isolated lab kubeconfig, complete the [cluster identity check](LAB-SAFETY.md#select-the-cluster-deliberately) first. Automated local environments use their saved ownership record; manual and cloud labs require the recorded UID with `--external-lab-uid "$LAB_CLUSTER_UID"` on each `verify` command.
 
 ```bash
 python3 scripts/lab.py --context "$LAB_CONTEXT" preflight
@@ -59,7 +59,7 @@ python3 scripts/lab.py --context "$LAB_CONTEXT" verify CH02
 python3 scripts/lab.py --context "$LAB_CONTEXT" verify MW02
 ```
 
-Run each verifier after solving that drill and before its reset. Preflight inventories the selected environment and checks permissions. CS01 tests traffic and temporarily creates a narrowly scoped NetworkPolicy, then removes it and confirms restored isolation. Use it on the owned lab baseline with policy-create/delete permissions. CH02 and MW02 inspect your prepared resources and run bounded in-container checks; the learner remains responsible for configuring the solution.
+Run each verifier after solving that drill and before its reset. Preflight reads the selected cluster's identity, versions and permissions without running drill probes. Verification stops with BLOCKED if the identity does not match. CS01 tests traffic and temporarily creates a narrowly scoped NetworkPolicy, then removes it and confirms restored isolation. Use it on the owned lab baseline with policy-create/delete permissions. CH02 and MW02 inspect your prepared resources and run bounded in-container checks; the learner remains responsible for configuring the solution.
 
 | Result | Exit code | What to do |
 |---|---|---|

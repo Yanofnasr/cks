@@ -76,7 +76,7 @@ python3 scripts/bootstrap_kubeadm.py --directory "$LAB_DIRECTORY" \
 
 The helper checks both fresh node identities and package readiness before changing cluster state. It initializes the API on the private address, adds the restricted public address to the serving certificate, transfers a short-lived join credential only through SSH stdin, revokes that credential after joining, verifies the downloaded Calico checksum and switches the pool to VXLAN. It waits for networking, DNS and nodes, then runs preflight.
 
-Use the exact `export KUBECONFIG=...` and `export LAB_CONTEXT=...` commands printed after completion, then follow the [shared baseline and first session](../../preparation/LAB-SAFETY.md#first-session). The kubeconfig is written with owner-only permissions. Take coordinated VM recovery snapshots before starting disruptive host/control-plane exercises; snapshots are separate billable resources that must be removed later.
+Use the exact `export KUBECONFIG=...` and `export LAB_CONTEXT=...` commands printed after completion. Confirm the [lab identity and record its UID](../../preparation/LAB-SAFETY.md#select-the-cluster-deliberately), then follow the [shared baseline and first session](../../preparation/LAB-SAFETY.md#first-session). The kubeconfig is written with owner-only permissions. Take coordinated VM recovery snapshots before starting disruptive host/control-plane exercises; snapshots are separate billable resources that must be removed later.
 
 ## Diagnose and recover
 

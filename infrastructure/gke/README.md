@@ -86,7 +86,7 @@ kubectl --context "$LAB_CONTEXT" wait nodes --all --for=condition=Ready --timeou
 python3 scripts/lab.py --context "$LAB_CONTEXT" preflight
 ```
 
-Continue with the [shared baseline and first session](../../preparation/LAB-SAFETY.md#first-session). Inspect the actual DNS resolver when writing NetworkPolicies. The dedicated node identity receives `roles/container.defaultNodeServiceAccount`, not Editor; workload permissions still need their own explicit configuration.
+Confirm the [lab identity and record its UID](../../preparation/LAB-SAFETY.md#select-the-cluster-deliberately), then continue with the [shared baseline and first session](../../preparation/LAB-SAFETY.md#first-session). Inspect the actual DNS resolver when writing NetworkPolicies. The dedicated node identity receives `roles/container.defaultNodeServiceAccount`, not Editor; workload permissions still need their own explicit configuration.
 
 ## Finish and destroy
 

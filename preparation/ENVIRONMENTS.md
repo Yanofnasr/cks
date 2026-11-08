@@ -110,7 +110,7 @@ python3 scripts/lab.py --context "$LAB_CONTEXT" preflight
 )
 ```
 
-Continue with the [shared baseline and first session](LAB-SAFETY.md#first-session). A Ready CNI is not proof of policy enforcement; CS01's behavioural verifier supplies that check after the exercise is solved.
+Confirm the [lab identity and record its UID](LAB-SAFETY.md#select-the-cluster-deliberately), then continue with the [shared baseline and first session](LAB-SAFETY.md#first-session). A Ready CNI is not proof of policy enforcement; CS01's behavioural verifier supplies that check after the exercise is solved.
 
 **Manual teardown:** after saving non-secret results, remove only this manually created cluster. Confirm it disappears from `kind get clusters`. Delete only its kubeconfig and downloaded manifest when no longer needed. For a cluster created through `scripts/environment.py`, use that script's `delete` command instead.
 
@@ -179,7 +179,7 @@ kubectl --context "$LAB_CONTEXT" wait --for=condition=Ready nodes --all --timeou
 python3 scripts/lab.py --context "$LAB_CONTEXT" preflight
 ```
 
-Use the [baseline](LAB-SAFETY.md#shared-starting-state), then start with CH02 and MW02. Authentication uses the selected AWS credential chain; retain `AWS_PROFILE` in each practice shell. [Isolated kubeconfig](https://docs.aws.amazon.com/cli/latest/reference/eks/update-kubeconfig.html).
+Confirm the [lab identity and record its UID](LAB-SAFETY.md#select-the-cluster-deliberately), then use the [baseline](LAB-SAFETY.md#shared-starting-state) and start with CH02 and MW02. Authentication uses the selected AWS credential chain; retain `AWS_PROFILE` in each practice shell. [Isolated kubeconfig](https://docs.aws.amazon.com/cli/latest/reference/eks/update-kubeconfig.html).
 
 **Teardown:** finish drill cleanup and delete any exercise-created Ingress/LoadBalancer resources while their controllers still run. Recheck `aws sts get-caller-identity`, then delete using the saved configuration and wait for completion:
 
@@ -223,7 +223,7 @@ kubectl --context "$LAB_CONTEXT" wait --for=condition=Ready nodes --all --timeou
 python3 scripts/lab.py --context "$LAB_CONTEXT" preflight
 ```
 
-The isolated admin credential is only for this disposable lab. If policy prohibits local admin credentials, use the organization's Entra/kubelogin access path and have the required Kubernetes permissions provisioned; do not weaken that policy. Inspect the actual DNS resolver before solving CS01. The node key uses the RSA form documented by [AKS SSH setup](https://learn.microsoft.com/en-us/azure/aks/manage-ssh-node-access). [API authorized ranges](https://learn.microsoft.com/en-us/azure/aks/api-server-authorized-ip-ranges), [AKS CLI](https://learn.microsoft.com/en-us/cli/azure/aks).
+The isolated admin credential is only for this disposable lab. If policy prohibits local admin credentials, use the organization's Entra/kubelogin access path and have the required Kubernetes permissions provisioned; do not weaken that policy. Confirm the [lab identity and record its UID](LAB-SAFETY.md#select-the-cluster-deliberately), then establish the shared baseline. Inspect the actual DNS resolver before solving CS01. The node key uses the RSA form documented by [AKS SSH setup](https://learn.microsoft.com/en-us/azure/aks/manage-ssh-node-access). [API authorized ranges](https://learn.microsoft.com/en-us/azure/aks/api-server-authorized-ip-ranges), [AKS CLI](https://learn.microsoft.com/en-us/cli/azure/aks).
 
 **Teardown:** finish drill/controller cleanup. List the group's resources and confirm every item belongs to this lab, then delete the dedicated group and wait. This deletes everything in that group:
 
@@ -282,7 +282,7 @@ kubectl --context "$LAB_CONTEXT" wait --for=condition=Ready nodes --all --timeou
 python3 scripts/lab.py --context "$LAB_CONTEXT" preflight
 ```
 
-`get-credentials` writes the isolated `KUBECONFIG` selected above. Record any automatic version changes. CNI handling of `ipBlock` and DNS can differ from Calico; use the actual resolver destinations in CS01, and CS02's explicit peer rules. [GKE NetworkPolicy differences](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/network-policy).
+`get-credentials` writes the isolated `KUBECONFIG` selected above. Confirm the [lab identity and record its UID](LAB-SAFETY.md#select-the-cluster-deliberately), then establish the shared baseline. Record any automatic version changes. CNI handling of `ipBlock` and DNS can differ from Calico; use the actual resolver destinations in CS01, and CS02's explicit peer rules. [GKE NetworkPolicy differences](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/network-policy).
 
 **Teardown:** remove drill-created Ingress and LoadBalancer resources first, then delete the named cluster and wait for the command to finish:
 
@@ -394,7 +394,7 @@ kubectl --context "$LAB_CONTEXT" -n kube-system rollout status deployment/coredn
 python3 scripts/lab.py --context "$LAB_CONTEXT" preflight
 ```
 
-After Calico and CoreDNS are healthy, both nodes must be Ready. Run preflight, establish the baseline, and take a coordinated recovery snapshot. Verify recovery access without Kubernetes before any host/control-plane drill. Additional components such as Falco, Istio and gVisor are installed only for their named drills using compatible upstream instructions.
+After Calico and CoreDNS are healthy, both nodes must be Ready. Confirm the [lab identity and record its UID](LAB-SAFETY.md#select-the-cluster-deliberately), establish the baseline, and take a coordinated recovery snapshot. Verify recovery access without Kubernetes before any host/control-plane drill. Additional components such as Falco, Istio and gVisor are installed only for their named drills using compatible upstream instructions.
 
 **Teardown:** save non-secret evidence, terminate only the recorded VMs, wait for provider deletion, and remove their task-owned disks/snapshots, IPs and network resources in dependency order. For Azure, a dedicated lab resource group can provide the deletion boundary; inspect it first. For AWS/GCP, use the recorded instance IDs and project/region/zone. Verify provider inventory and billing resources rather than treating `kubeadm reset` or stopped VMs as deletion. Remove local kubeconfig and keys after cleanup is verified.
 

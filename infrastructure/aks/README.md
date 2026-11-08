@@ -75,7 +75,7 @@ python3 scripts/lab.py --context "$LAB_CONTEXT" preflight
 
 If Entra access is denied, verify group membership, tenant and the current Azure CLI login. Preserve local-account disabling; do not switch to `--admin` credentials. A changed workstation/VPN address requires a reviewed `admin_cidr` update in the same Terraform state.
 
-Continue with the [shared baseline and first session](../../preparation/LAB-SAFETY.md#first-session), using this exact kubeconfig and context. Consult the [drill matrix](../../preparation/COMPATIBILITY.md) for host/control-plane exercises. Network-policy drills use the cluster's actual DNS resolver; Cilium and Calico need not interpret every IP-based policy identically.
+Confirm the [lab identity and record its UID](../../preparation/LAB-SAFETY.md#select-the-cluster-deliberately), then continue with the [shared baseline and first session](../../preparation/LAB-SAFETY.md#first-session), using this exact kubeconfig and context. Consult the [drill matrix](../../preparation/COMPATIBILITY.md) for host/control-plane exercises. Network-policy drills use the cluster's actual DNS resolver; Cilium and Calico need not interpret every IP-based policy identically.
 
 ## Finish and delete
 

@@ -4,11 +4,15 @@ import argparse
 from contextlib import contextmanager
 import ipaddress
 import json
+from pathlib import Path
+import re
 import shutil
 import signal
 import subprocess
 import time
 import uuid
+
+ROOT = Path(__file__).resolve().parents[1]
 
 IDENTITY = ["--as=system:serviceaccount:cks-lab:ch02-client",
             "--as-group=system:serviceaccounts", "--as-group=system:serviceaccounts:cks-lab",
@@ -31,6 +35,7 @@ def require(condition, message):
 
 class Kubectl:
     def __init__(self, context):
+        self.context = context
         self.prefix = ["kubectl", "--context", context, "--request-timeout=10s"]
 
     def run(self, *args, document=None, check=True):
@@ -89,6 +94,42 @@ class Kubectl:
         if (answer, result.returncode) not in {("yes", 0), ("no", 1)}:
             raise Blocked("authorization query failed; impersonation or API errors are not security denials")
         return answer == "yes"
+
+
+def cluster_identity(kube):
+    metadata = kube.get("namespace", "kube-system").get("metadata")
+    if not isinstance(metadata, dict) or not isinstance(metadata.get("uid"), str) or not metadata["uid"]:
+        raise Blocked("could not read the selected cluster's kube-system UID")
+    return metadata
+
+
+def verify_identity(kube, external_uid=None):
+    metadata = cluster_identity(kube)
+    uid = metadata["uid"]
+    if external_uid is not None and external_uid != uid:
+        raise Blocked("external lab UID does not match the selected cluster; no verification was started")
+    match = re.fullmatch(r"kind-(cks-[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)", kube.context)
+    if match and len(match[1]) <= 63:
+        directory = ROOT / "work" / "environments" / match[1]
+        record = directory / "environment.json"
+        if any(p.is_symlink() for p in (ROOT / "work", directory.parent, directory, record)):
+            raise Blocked("local environment record uses a symbolic link; no verification was started")
+        if directory.exists():
+            try:
+                state = json.loads(record.read_text())
+                uuid.UUID(state["owner"])
+                valid = (state["name"] == match[1] and state["namespace_uid"] == uid
+                         and state["phase"] in {"created", "owned", "ready"}
+                         and metadata.get("annotations", {}).get("cks-practice/environment-id") == state["owner"])
+            except (OSError, ValueError, KeyError, TypeError, AttributeError):
+                raise Blocked("local environment record is incomplete or invalid; inspect it before verification") from None
+            if not valid:
+                raise Blocked("selected cluster differs from its local ownership record; external acknowledgement cannot override it")
+            print("PASS: selected cluster matches the local environment UID and ownership marker")
+            return
+    if external_uid is None:
+        raise Blocked("no local ownership record; inspect preflight and acknowledge your disposable lab with --external-lab-uid UID")
+    print("PASS: selected cluster matches the explicitly acknowledged external lab UID")
 
 
 def ready(pod):
@@ -317,6 +358,8 @@ def mw02(kube, pods):
 
 
 def preflight(kube):
+    metadata = cluster_identity(kube)
+    print(f"INFO: context={kube.context} cluster UID={metadata['uid']}")
     versions = kube.decode(kube.run("version", "-o", "json").stdout)
     for key in ("clientVersion", "serverVersion"):
         version = versions.get(key, {}).get("gitVersion")
@@ -374,12 +417,14 @@ def preflight(kube):
 
 
 def main(argv=None):
+    checks = {"CS01": cs01, "CH02": ch02, "MW02": mw02}
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--context", required=True, help="explicit disposable-cluster context")
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("preflight", help="read-only environment inventory and prerequisite checks")
     verify = commands.add_parser("verify", help="verify a completed drill; CS01 temporarily creates a scoped egress policy")
-    verify.add_argument("drill", choices=("CS01", "CH02", "MW02"))
+    verify.add_argument("drill", choices=checks)
+    verify.add_argument("--external-lab-uid", help="explicitly acknowledge this disposable external cluster's kube-system UID")
     args = parser.parse_args(argv)
     if not args.context.strip():
         parser.error("--context must not be empty")
@@ -391,7 +436,9 @@ def main(argv=None):
         if args.command == "preflight":
             preflight(kube)
         else:
-            {"CS01": cs01, "CH02": ch02, "MW02": mw02}[args.drill](kube, baseline(kube))
+            verify_identity(kube, args.external_lab_uid)
+            pods = baseline(kube)
+            checks[args.drill](kube, pods)
         print("PASS: " + ("preflight inventory; next run the drill's behavioral checks" if args.command == "preflight" else args.drill))
         return 0
     except Failed as error:

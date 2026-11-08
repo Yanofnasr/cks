@@ -4,7 +4,9 @@ import copy
 import io
 import json
 import subprocess
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from scripts import lab
@@ -27,6 +29,8 @@ class Cluster:
     """A kubectl boundary fake: no cluster commands run in these tests."""
     def __init__(self):
         self.calls = []
+        self.uid = "cluster-uid"
+        self.owner = None
         self.policy = None
         self.enforced = True
         self.ingress = True
@@ -52,6 +56,9 @@ class Cluster:
         out, err, code = "", "", 0
         if args[:1] == ["version"]:
             out = {"clientVersion": {"gitVersion": "v1.37.1"}, "serverVersion": {"gitVersion": "v1.37.1"}}
+        elif args[:2] == ["get", "namespace"]:
+            out = {"metadata": {"name": args[2], "uid": self.uid,
+                                "annotations": {"cks-practice/environment-id": self.owner} if self.owner else {}}}
         elif args[:2] == ["get", "nodes"]:
             out = {"items": [{"metadata": {"name": "worker"}, "spec": {}, "status": {
                 "conditions": [{"type": "Ready", "status": "True"}],
@@ -135,11 +142,48 @@ class Cluster:
 
 
 class LabTests(unittest.TestCase):
-    def invoke(self, cluster, *args):
+    def invoke(self, cluster, *args, context="practice", external=True):
         output = io.StringIO()
+        arguments = ["--context", context, *args]
+        if args[0] == "verify" and external:
+            arguments += ["--external-lab-uid", cluster.uid]
         with patch("scripts.lab.subprocess.run", side_effect=cluster.run), contextlib.redirect_stdout(output):
-            code = lab.main(["--context", "practice", *args])
+            code = lab.main(arguments)
         return code, output.getvalue()
+
+    def test_unknown_cluster_is_blocked_before_any_pod_probe_or_write(self):
+        cluster = Cluster()
+        code, output = self.invoke(cluster, "verify", "CS01", external=False)
+        self.assertEqual(code, 2, output)
+        self.assertTrue(all(cmd[4:6] == ["get", "namespace"] for cmd, _ in cluster.calls))
+
+    def test_wrong_external_uid_is_blocked_without_mutation(self):
+        cluster = Cluster()
+        code, output = self.invoke(cluster, "verify", "CS01", "--external-lab-uid", "another-cluster", external=False)
+        self.assertEqual(code, 2, output)
+        self.assertFalse(any(cmd[4] in {"create", "delete", "exec"} for cmd, _ in cluster.calls))
+
+    def test_registered_identity_must_match_even_with_external_acknowledgement(self):
+        for broken in (None, "uid", "owner", "json", "symlink"):
+            with self.subTest(broken=broken), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                record = root / "work/environments/cks-test/environment.json"
+                record.parent.mkdir(parents=True)
+                cluster = Cluster()
+                cluster.owner = "00000000-0000-4000-8000-000000000001"
+                state = {"name": "cks-test", "owner": cluster.owner, "namespace_uid": cluster.uid, "phase": "ready"}
+                if broken == "uid": state["namespace_uid"] = "other-uid"
+                if broken == "owner": state["owner"] = "00000000-0000-4000-8000-000000000002"
+                record.write_text("broken" if broken == "json" else json.dumps(state))
+                if broken == "symlink":
+                    target = root / "record.json"
+                    record.rename(target)
+                    record.symlink_to(target)
+                with patch.object(lab, "ROOT", root):
+                    code, output = self.invoke(cluster, "verify", "CH02", context="kind-cks-test", external=broken is not None)
+                self.assertEqual(code, 0 if broken is None else 2, output)
+                if broken:
+                    self.assertFalse(any(cmd[4] in {"create", "delete", "exec"} for cmd, _ in cluster.calls))
 
     def test_context_is_mandatory(self):
         with patch("scripts.lab.subprocess.run") as run, contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
